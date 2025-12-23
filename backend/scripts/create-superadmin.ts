@@ -84,7 +84,7 @@ async function createSuperAdmin(): Promise<void> {
       lastName: superAdminLastName,
       timeZone: 'America/New_York',
       username: superAdminUsername.toLowerCase(),
-      role: 'superadmin',
+      role: 'Super Admin',
     };
 
     const result = await usersCollection.insertOne(superAdmin);
@@ -95,7 +95,7 @@ async function createSuperAdmin(): Promise<void> {
       console.log(`   Email: ${superAdminEmail}`);
       console.log(`   Username: ${superAdminUsername}`);
       console.log(`   Password: ${superAdminPassword}`);
-      console.log(`   Role: superadmin`);
+      console.log(`   Role: Super Admin`);
       console.log('\n⚠️  Please change the password after first login!');
     } else {
       throw new Error('Failed to create super admin');

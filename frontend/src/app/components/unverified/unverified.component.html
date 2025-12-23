@@ -1,0 +1,43 @@
+<div class="unverified-container">
+  <div class="unverified-card">
+    <div class="header">
+      <h1>Email Verification Required</h1>
+      <button (click)="logout()" class="logout-btn">Logout</button>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      Loading...
+    </div>
+
+    <div *ngIf="!isLoading && user" class="unverified-content">
+      <div class="icon-wrapper">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M20 4H4C2.9 4 2.01 4.9 2.01 6L2 18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6C22 4.9 21.1 4 20 4ZM20 8L12 13L4 8V6L12 11L20 6V8Z" fill="#667eea"/>
+        </svg>
+      </div>
+      
+      <h2>Please verify your email address</h2>
+      
+      <p class="message">
+        We've sent a verification email to <strong>{{ user.email }}</strong>. 
+        Please check your inbox and click the verification link to activate your account.
+      </p>
+
+      <div class="actions">
+        <button (click)="resendVerification()" class="btn-resend">
+          Resend Verification Email
+        </button>
+      </div>
+
+      <div class="info-box">
+        <p><strong>Didn't receive the email?</strong></p>
+        <ul>
+          <li>Check your spam or junk mail folder</li>
+          <li>Make sure you entered the correct email address</li>
+          <li>Wait a few minutes and try resending</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+

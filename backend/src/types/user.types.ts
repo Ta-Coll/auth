@@ -22,6 +22,7 @@ export interface User {
   // Role management
   role?: UserRole;
   teams?: TeamMembership[];
+  companies?: CompanyMembership[];
 }
 
 export interface Notify {
@@ -42,8 +43,15 @@ export interface TeamMembership {
   joinedAt: number;
 }
 
-export type UserRole = 'anonymous' | 'registered' | 'superadmin';
+export interface CompanyMembership {
+  companyId: string;
+  role: CompanyRole;
+  joinedAt: number;
+}
+
+export type UserRole = 'Member' | 'Creator' | 'Super Admin';
 export type TeamRole = 'Member' | 'Creator' | 'Admin';
+export type CompanyRole = 'Member' | 'Creator' | 'Admin';
 
 export interface SignupRequest {
   email: string;

@@ -21,8 +21,11 @@ export async function connectDatabase(): Promise<Db> {
     db = client.db(dbName);
     console.log('✅ Connected to MongoDB');
     
-    // Ensure users collection exists and has indexes
+    // Ensure collections exist and have indexes
     await ensureUsersCollection();
+    await ensureTeamsCollection();
+    await ensureCompaniesCollection();
+    await ensureInvitesCollection();
     
     return db;
   } catch (error) {
@@ -46,6 +49,60 @@ async function ensureUsersCollection(): Promise<void> {
     console.log('✅ Users collection indexes created');
   } catch (error) {
     console.error('Error creating indexes:', error);
+  }
+}
+
+async function ensureTeamsCollection(): Promise<void> {
+  if (!db) return;
+
+  try {
+    const teamsCollection = db.collection('teams');
+    
+    // Create indexes
+    await teamsCollection.createIndex({ teamId: 1 }, { unique: true });
+    await teamsCollection.createIndex({ createdBy: 1 });
+    await teamsCollection.createIndex({ removed: 1 });
+    
+    console.log('✅ Teams collection indexes created');
+  } catch (error) {
+    console.error('Error creating team indexes:', error);
+  }
+}
+
+async function ensureCompaniesCollection(): Promise<void> {
+  if (!db) return;
+
+  try {
+    const companiesCollection = db.collection('companies');
+    
+    // Create indexes
+    await companiesCollection.createIndex({ companyId: 1 }, { unique: true });
+    await companiesCollection.createIndex({ createdBy: 1 });
+    await companiesCollection.createIndex({ 'members.uid': 1 });
+    await companiesCollection.createIndex({ removed: 1 });
+    
+    console.log('✅ Companies collection indexes created');
+  } catch (error) {
+    console.error('Error creating company indexes:', error);
+  }
+}
+
+async function ensureInvitesCollection(): Promise<void> {
+  if (!db) return;
+
+  try {
+    const invitesCollection = db.collection('invites');
+    
+    // Create indexes
+    await invitesCollection.createIndex({ inviteId: 1 }, { unique: true });
+    await invitesCollection.createIndex({ email: 1 });
+    await invitesCollection.createIndex({ companyId: 1 });
+    await invitesCollection.createIndex({ status: 1 });
+    await invitesCollection.createIndex({ email: 1, status: 1 });
+    
+    console.log('✅ Invites collection indexes created');
+  } catch (error) {
+    console.error('Error creating invite indexes:', error);
   }
 }
 

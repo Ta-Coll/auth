@@ -33,10 +33,14 @@ export class LoginComponent {
       this.authService.login(formData).subscribe({
         next: (response) => {
           if (response.success) {
-            // Redirect super admins directly to admin panel
+            // Redirect based on role and email verification
             // Use replaceUrl to prevent back button from going to login
-            if (response.data.user.role === 'superadmin') {
+            const userRole = response.data.user.role;
+            // Check for both 'Super Admin' (new) and 'superadmin' (old) for backward compatibility
+            if (userRole === 'Super Admin' || userRole === 'superadmin') {
               this.router.navigate(['/admin'], { replaceUrl: true });
+            } else if (!response.data.user.emailVerified) {
+              this.router.navigate(['/unverified'], { replaceUrl: true });
             } else {
               this.router.navigate(['/dashboard'], { replaceUrl: true });
             }

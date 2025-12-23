@@ -83,9 +83,11 @@ export function requireSuperAdmin(): (req: Request, res: Response, next: NextFun
       return;
     }
 
-    if (req.user.role !== 'superadmin') {
+    // Accept both 'Super Admin' (new) and 'superadmin' (old) for backward compatibility
+    const userRole = req.user.role;
+    if (userRole !== 'Super Admin' && userRole !== 'superadmin') {
       res.status(403).json({ 
-        error: 'Super admin access required', 
+        error: 'Super Admin access required', 
         code: 'SUPERADMIN_REQUIRED',
         current: req.user.role
       });

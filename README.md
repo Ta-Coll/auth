@@ -54,7 +54,7 @@ npm install
 
 Create `.env` file in the `backend/` directory:
 ```env
-MONGODB_URI=your-mongodb-connection-string
+MONGODB_URI=
 DB_NAME=napkinevents
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=7d

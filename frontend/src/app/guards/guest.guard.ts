@@ -18,8 +18,12 @@ export class GuestGuard implements CanActivate {
       if (userStr) {
         try {
           const user = JSON.parse(userStr);
-          if (user.role === 'superadmin') {
+          // Check for both 'Super Admin' (new) and 'superadmin' (old) for backward compatibility
+          const userRole = user.role;
+          if (userRole === 'Super Admin' || userRole === 'superadmin') {
             this.router.navigate(['/admin'], { replaceUrl: true });
+          } else if (!user.emailVerified) {
+            this.router.navigate(['/unverified'], { replaceUrl: true });
           } else {
             this.router.navigate(['/dashboard'], { replaceUrl: true });
           }

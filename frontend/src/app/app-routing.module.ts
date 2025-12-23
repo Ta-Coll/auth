@@ -4,6 +4,7 @@ import { SignupComponent } from './components/signup/signup.component';
 import { LoginComponent } from './components/login/login.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SuperadminComponent } from './components/superadmin/superadmin.component';
+import { UnverifiedComponent } from './components/unverified/unverified.component';
 import { AuthGuard } from './guards/auth.guard';
 import { SuperAdminGuard } from './guards/superadmin.guard';
 import { GuestGuard } from './guards/guest.guard';
@@ -13,6 +14,7 @@ const routes: Routes = [
   { path: 'signup', component: SignupComponent, canActivate: [GuestGuard] },
   { path: 'login', component: LoginComponent, canActivate: [GuestGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
+  { path: 'unverified', component: UnverifiedComponent, canActivate: [AuthGuard] },
   { path: 'admin', component: SuperadminComponent, canActivate: [SuperAdminGuard] },
   { path: '**', redirectTo: '/login' }
 ];

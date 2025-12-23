@@ -17,6 +17,29 @@
   border-bottom: 2px solid #e0e0e0;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.insert-btn {
+  padding: 10px 20px;
+  background: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.insert-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
+}
+
 h1 {
   color: #333;
   font-size: 32px;
@@ -89,25 +112,10 @@ h1 {
   background: #f8f9fa;
 }
 
-.badge-superadmin {
-  background: #dc3545;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-registered {
-  background: #28a745;
-  color: white;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-anonymous {
+.badge-superadmin,
+.badge-creator,
+.badge-member,
+.badge-default {
   background: #6c757d;
   color: white;
   padding: 4px 12px;
@@ -126,6 +134,11 @@ h1 {
   font-weight: 600;
 }
 
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
 .btn-edit {
   padding: 6px 12px;
   background: #667eea;
@@ -139,6 +152,21 @@ h1 {
 
 .btn-edit:hover {
   background: #5568d3;
+}
+
+.btn-delete {
+  padding: 6px 12px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-delete:hover {
+  background: #c82333;
 }
 
 .pagination {
@@ -198,6 +226,12 @@ h1 {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
+.insert-modal {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
 .modal-content h3 {
   margin-top: 0;
   margin-bottom: 20px;
@@ -231,6 +265,43 @@ h1 {
 .form-control:focus {
   outline: none;
   border-color: #667eea;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.checkbox-label span {
+  color: #333;
+  font-size: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-hint {
+  display: block;
+  margin-top: 5px;
+  color: #666;
+  font-size: 12px;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .modal-actions {

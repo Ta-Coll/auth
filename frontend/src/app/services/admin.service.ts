@@ -58,5 +58,32 @@ export class AdminService {
       headers: this.getHeaders()
     });
   }
+
+  updateUser(uid: string, role: string, emailVerified: boolean): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/users/${uid}`, { role, emailVerified }, {
+      headers: this.getHeaders()
+    });
+  }
+
+  createUser(userData: {
+    email: string;
+    username: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    timeZone: string;
+    role: string;
+    emailVerified: boolean;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/users`, userData, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteUser(uid: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/users/${uid}`, {
+      headers: this.getHeaders()
+    });
+  }
 }
 

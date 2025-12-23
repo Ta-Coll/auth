@@ -18,7 +18,29 @@ export class SuperadminComponent implements OnInit {
   errorMessage: string = '';
   selectedUser: User | null = null;
   newRole: string = '';
+  newEmailVerified: boolean = false;
   showRoleModal: boolean = false;
+  showInsertModal: boolean = false;
+  isCreating: boolean = false;
+  newUser: {
+    email: string;
+    username: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    timeZone: string;
+    role: string;
+    emailVerified: boolean;
+  } = {
+    email: '',
+    username: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    timeZone: 'America/New_York',
+    role: 'Member',
+    emailVerified: false
+  };
 
   constructor(
     private adminService: AdminService,
@@ -61,7 +83,8 @@ export class SuperadminComponent implements OnInit {
 
   openRoleModal(user: User): void {
     this.selectedUser = user;
-    this.newRole = user.role || 'registered';
+    this.newRole = user.role || 'Member';
+    this.newEmailVerified = user.emailVerified || false;
     this.showRoleModal = true;
   }
 
@@ -69,40 +92,117 @@ export class SuperadminComponent implements OnInit {
     this.showRoleModal = false;
     this.selectedUser = null;
     this.newRole = '';
+    this.newEmailVerified = false;
   }
 
   updateUserRole(): void {
     if (!this.selectedUser || !this.newRole) return;
 
-    this.adminService.updateUserRole(this.selectedUser.uid, this.newRole).subscribe({
+    this.adminService.updateUser(this.selectedUser.uid, this.newRole, this.newEmailVerified).subscribe({
       next: (response) => {
         if (response.success) {
           // Update user in list
           const index = this.users.findIndex(u => u.uid === this.selectedUser!.uid);
           if (index !== -1) {
             this.users[index].role = this.newRole;
+            this.users[index].emailVerified = this.newEmailVerified;
           }
           this.closeRoleModal();
         }
       },
       error: (error) => {
-        this.errorMessage = error.error?.error || 'Failed to update user role';
-        console.error('Error updating role:', error);
+        this.errorMessage = error.error?.error || 'Failed to update user';
+        console.error('Error updating user:', error);
       }
     });
   }
 
   getRoleBadgeClass(role: string | undefined): string {
     switch (role) {
-      case 'superadmin':
+      case 'Super Admin':
         return 'badge-superadmin';
-      case 'registered':
-        return 'badge-registered';
-      case 'anonymous':
-        return 'badge-anonymous';
+      case 'Creator':
+        return 'badge-creator';
+      case 'Member':
+        return 'badge-member';
       default:
         return 'badge-default';
     }
+  }
+
+  openInsertModal(): void {
+    this.newUser = {
+      email: '',
+      username: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      timeZone: 'America/New_York',
+      role: 'Member',
+      emailVerified: false
+    };
+    this.showInsertModal = true;
+    this.errorMessage = '';
+  }
+
+  closeInsertModal(): void {
+    this.showInsertModal = false;
+    this.newUser = {
+      email: '',
+      username: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      timeZone: 'America/New_York',
+      role: 'Member',
+      emailVerified: false
+    };
+  }
+
+  createUser(): void {
+    if (!this.newUser.email || !this.newUser.username || !this.newUser.password || 
+        !this.newUser.firstName || !this.newUser.lastName || !this.newUser.role) {
+      this.errorMessage = 'Please fill in all required fields';
+      return;
+    }
+
+    this.isCreating = true;
+    this.errorMessage = '';
+
+    this.adminService.createUser(this.newUser).subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Reload users list
+          this.loadUsers();
+          this.closeInsertModal();
+          this.isCreating = false;
+        }
+      },
+      error: (error) => {
+        this.errorMessage = error.error?.error || 'Failed to create user';
+        console.error('Error creating user:', error);
+        this.isCreating = false;
+      }
+    });
+  }
+
+  deleteUser(user: User): void {
+    if (!confirm(`Are you sure you want to delete ${user.firstName} ${user.lastName} (${user.email})?`)) {
+      return;
+    }
+
+    this.adminService.deleteUser(user.uid).subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Reload users list
+          this.loadUsers();
+        }
+      },
+      error: (error) => {
+        this.errorMessage = error.error?.error || 'Failed to delete user';
+        console.error('Error deleting user:', error);
+      }
+    });
   }
 
   logout(): void {

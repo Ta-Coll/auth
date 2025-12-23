@@ -27,6 +27,9 @@ router.post('/signup', validateSignup, async (req: Request, res: Response): Prom
 
     const user = await userModel.createUser(data);
 
+    // Log the created user's role for debugging
+    console.log('✅ User created with role:', user.role, 'for email:', user.email);
+
     // Generate JWT token
     const token = generateToken({
       uid: user.uid,

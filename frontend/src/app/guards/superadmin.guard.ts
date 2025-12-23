@@ -23,7 +23,9 @@ export class SuperAdminGuard implements CanActivate {
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        if (user.role === 'superadmin') {
+        // Check for both 'Super Admin' (new) and 'superadmin' (old) for backward compatibility
+        const userRole = user.role;
+        if (userRole === 'Super Admin' || userRole === 'superadmin') {
           return true;
         }
       } catch (e) {
@@ -34,7 +36,9 @@ export class SuperAdminGuard implements CanActivate {
     // If user not in storage, fetch from API
     return this.authService.getCurrentUser().pipe(
       map(response => {
-        if (response.success && response.data.role === 'superadmin') {
+        // Check for both 'Super Admin' (new) and 'superadmin' (old) for backward compatibility
+        const userRole = response.data.role;
+        if (response.success && (userRole === 'Super Admin' || userRole === 'superadmin')) {
           return true;
         } else {
           this.router.navigate(['/dashboard']);

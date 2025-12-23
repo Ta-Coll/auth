@@ -13,6 +13,110 @@
       <div class="welcome-message">
         <h2>Hello, {{ user.firstName }}!</h2>
         <p class="welcome-text">Welcome to Napkin. You're successfully logged in.</p>
+        <p *ngIf="user.role === 'Creator'" class="role-badge">Role: Creator</p>
+      </div>
+      
+      <!-- Show Create Company button for Members -->
+      <div *ngIf="user.role === 'Member'" class="actions-section">
+        <button (click)="openCreateCompanyModal()" class="btn-create-company">Create Company</button>
+        <p class="hint-text">Create a company to become a Creator and invite team members</p>
+      </div>
+
+      <!-- Show Companies and Invite buttons for Creators -->
+      <div *ngIf="user.role === 'Creator'" class="companies-section">
+        <div class="section-header">
+          <h3>My Companies</h3>
+          <button (click)="openCreateCompanyModal()" class="btn-create-company">Create New Company</button>
+        </div>
+        
+        <div *ngIf="userCompanies.length === 0" class="no-companies">
+          <p>You haven't created any companies yet.</p>
+          <button (click)="openCreateCompanyModal()" class="btn-create-company">Create Your First Company</button>
+        </div>
+
+        <div *ngIf="userCompanies.length > 0" class="companies-list">
+          <div *ngFor="let company of userCompanies" class="company-card">
+            <div class="company-info">
+              <h4>{{ company.name }}</h4>
+              <p *ngIf="company.description" class="company-description">{{ company.description }}</p>
+              <p class="company-meta">Members: {{ company.members?.length || 0 }}</p>
+            </div>
+            <div class="company-actions">
+              <button (click)="openInviteModal(company.companyId)" class="btn-invite">Invite User</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create Company Modal -->
+  <div *ngIf="showCreateCompanyModal" class="modal-overlay" (click)="closeCreateCompanyModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>Create New Company</h3>
+      <div class="modal-body">
+        <form (ngSubmit)="createCompany()" #companyForm="ngForm">
+          <div class="form-group">
+            <label for="company-name">Company Name: *</label>
+            <input 
+              type="text" 
+              id="company-name" 
+              name="companyName"
+              [(ngModel)]="newCompany.name" 
+              class="form-control" 
+              required
+              minlength="2"
+              maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label for="company-description">Description:</label>
+            <textarea 
+              id="company-description" 
+              name="description"
+              [(ngModel)]="newCompany.description" 
+              class="form-control" 
+              rows="4"
+              maxlength="500"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" (click)="closeCreateCompanyModal()" class="btn-cancel">Cancel</button>
+            <button type="submit" [disabled]="!companyForm.valid || isCreatingCompany" class="btn-save">
+              {{ isCreatingCompany ? 'Creating...' : 'Create Company' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Invite User Modal -->
+  <div *ngIf="showInviteModal" class="modal-overlay" (click)="closeInviteModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>Invite User to Company</h3>
+      <div class="modal-body">
+        <form (ngSubmit)="inviteUser()" #inviteForm="ngForm">
+          <div class="form-group">
+            <label for="invite-email">Email Address: *</label>
+            <input 
+              type="email" 
+              id="invite-email" 
+              name="email"
+              [(ngModel)]="inviteData.email" 
+              class="form-control" 
+              required
+              email>
+            <p class="form-hint">Enter the email address of the user you want to invite</p>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" (click)="closeInviteModal()" class="btn-cancel">Cancel</button>
+            <button type="submit" [disabled]="!inviteForm.valid || isInviting" class="btn-save">
+              {{ isInviting ? 'Sending...' : 'Send Invite' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

@@ -37,10 +37,13 @@ export class SignupComponent {
       this.authService.signup(formData).subscribe({
         next: (response) => {
           if (response.success) {
-            // Redirect super admins directly to admin panel (though signup won't create super admins)
+            // Redirect based on role and email verification
             // Use replaceUrl to prevent back button from going to signup
-            if (response.data.user.role === 'superadmin') {
+            // New users are not verified, so redirect to unverified page
+            if (response.data.user.role === 'Super Admin') {
               this.router.navigate(['/admin'], { replaceUrl: true });
+            } else if (!response.data.user.emailVerified) {
+              this.router.navigate(['/unverified'], { replaceUrl: true });
             } else {
               this.router.navigate(['/dashboard'], { replaceUrl: true });
             }

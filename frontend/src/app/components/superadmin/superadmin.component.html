@@ -1,7 +1,10 @@
 <div class="superadmin-container">
   <div class="admin-header">
     <h1>Super Admin Panel</h1>
-    <button (click)="logout()" class="logout-btn">Logout</button>
+    <div class="header-actions">
+      <button (click)="openInsertModal()" class="insert-btn">Insert</button>
+      <button (click)="logout()" class="logout-btn">Logout</button>
+    </div>
   </div>
 
   <div *ngIf="errorMessage" class="error-message">
@@ -10,7 +13,9 @@
 
   <!-- Users Section -->
   <div class="users-section">
-    <h2>User Management</h2>
+    <div class="section-header">
+      <h2>User Management</h2>
+    </div>
     
     <div *ngIf="isLoading" class="loading">
       Loading users...
@@ -35,7 +40,7 @@
             <td>{{ user.username || '-' }}</td>
             <td>
               <span [class]="getRoleBadgeClass(user.role)">
-                {{ user.role || 'registered' }}
+                {{ user.role || 'Member' }}
               </span>
             </td>
             <td>
@@ -44,7 +49,10 @@
               </span>
             </td>
             <td>
-              <button (click)="openRoleModal(user)" class="btn-edit">Edit Role</button>
+              <div class="action-buttons">
+                <button (click)="openRoleModal(user)" class="btn-edit">Edit</button>
+                <button (click)="deleteUser(user)" class="btn-delete">Delete</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -78,22 +86,150 @@
   <!-- Role Update Modal -->
   <div *ngIf="showRoleModal" class="modal-overlay" (click)="closeRoleModal()">
     <div class="modal-content" (click)="$event.stopPropagation()">
-      <h3>Update User Role</h3>
+      <h3>Update User</h3>
       <div *ngIf="selectedUser" class="modal-body">
         <p><strong>User:</strong> {{ selectedUser.firstName }} {{ selectedUser.lastName }}</p>
         <p><strong>Email:</strong> {{ selectedUser.email }}</p>
         <div class="form-group">
           <label for="role">Role:</label>
           <select id="role" [(ngModel)]="newRole" class="form-control">
-            <option value="anonymous">Anonymous</option>
-            <option value="registered">Registered</option>
-            <option value="superadmin">Super Admin</option>
+            <option value="Member">Member</option>
+            <option value="Creator">Creator</option>
+            <option value="Super Admin">Super Admin</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" [(ngModel)]="newEmailVerified" class="checkbox-input">
+            <span>Email Verified</span>
+          </label>
         </div>
         <div class="modal-actions">
           <button (click)="closeRoleModal()" class="btn-cancel">Cancel</button>
           <button (click)="updateUserRole()" class="btn-save">Save</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insert User Modal -->
+  <div *ngIf="showInsertModal" class="modal-overlay" (click)="closeInsertModal()">
+    <div class="modal-content insert-modal" (click)="$event.stopPropagation()">
+      <h3>Create New User</h3>
+      <div class="modal-body">
+        <form (ngSubmit)="createUser()" #insertForm="ngForm">
+          <div class="form-group">
+            <label for="insert-email">Email: *</label>
+            <input 
+              type="email" 
+              id="insert-email" 
+              name="email"
+              [(ngModel)]="newUser.email" 
+              class="form-control" 
+              required
+              email>
+          </div>
+
+          <div class="form-group">
+            <label for="insert-username">Username: *</label>
+            <input 
+              type="text" 
+              id="insert-username" 
+              name="username"
+              [(ngModel)]="newUser.username" 
+              class="form-control" 
+              required
+              minlength="3"
+              maxlength="30"
+              pattern="[a-zA-Z0-9_]+">
+          </div>
+
+          <div class="form-group">
+            <label for="insert-password">Password: *</label>
+            <input 
+              type="password" 
+              id="insert-password" 
+              name="password"
+              [(ngModel)]="newUser.password" 
+              class="form-control" 
+              required
+              minlength="8"
+              pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$">
+            <small class="form-hint">Must contain uppercase, lowercase, and number</small>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="insert-firstName">First Name: *</label>
+              <input 
+                type="text" 
+                id="insert-firstName" 
+                name="firstName"
+                [(ngModel)]="newUser.firstName" 
+                class="form-control" 
+                required>
+            </div>
+
+            <div class="form-group">
+              <label for="insert-lastName">Last Name: *</label>
+              <input 
+                type="text" 
+                id="insert-lastName" 
+                name="lastName"
+                [(ngModel)]="newUser.lastName" 
+                class="form-control" 
+                required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="insert-timeZone">Time Zone: *</label>
+            <select 
+              id="insert-timeZone" 
+              name="timeZone"
+              [(ngModel)]="newUser.timeZone" 
+              class="form-control" 
+              required>
+              <option value="America/New_York">America/New_York</option>
+              <option value="America/Chicago">America/Chicago</option>
+              <option value="America/Denver">America/Denver</option>
+              <option value="America/Los_Angeles">America/Los_Angeles</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="insert-role">Role: *</label>
+            <select 
+              id="insert-role" 
+              name="role"
+              [(ngModel)]="newUser.role" 
+              class="form-control" 
+              required>
+              <option value="Member">Member</option>
+              <option value="Creator">Creator</option>
+              <option value="Super Admin">Super Admin</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                name="emailVerified"
+                [(ngModel)]="newUser.emailVerified" 
+                class="checkbox-input">
+              <span>Email Verified</span>
+            </label>
+          </div>
+
+          <div class="modal-actions">
+            <button type="button" (click)="closeInsertModal()" class="btn-cancel">Cancel</button>
+            <button type="submit" [disabled]="!insertForm.valid || isCreating" class="btn-save">
+              {{ isCreating ? 'Creating...' : 'Create User' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
