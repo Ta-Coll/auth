@@ -1,0 +1,101 @@
+<div class="superadmin-container">
+  <div class="admin-header">
+    <h1>Super Admin Panel</h1>
+    <button (click)="logout()" class="logout-btn">Logout</button>
+  </div>
+
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+  </div>
+
+  <!-- Users Section -->
+  <div class="users-section">
+    <h2>User Management</h2>
+    
+    <div *ngIf="isLoading" class="loading">
+      Loading users...
+    </div>
+
+    <div *ngIf="!isLoading && users.length > 0" class="users-table-container">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Username</th>
+            <th>Role</th>
+            <th>Email Verified</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{ user.firstName }} {{ user.lastName }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.username || '-' }}</td>
+            <td>
+              <span [class]="getRoleBadgeClass(user.role)">
+                {{ user.role || 'registered' }}
+              </span>
+            </td>
+            <td>
+              <span [class.verified]="user.emailVerified" [class.unverified]="!user.emailVerified">
+                {{ user.emailVerified ? 'Yes' : 'No' }}
+              </span>
+            </td>
+            <td>
+              <button (click)="openRoleModal(user)" class="btn-edit">Edit Role</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="pagination" *ngIf="totalPages > 1">
+        <button 
+          (click)="changePage(currentPage - 1)" 
+          [disabled]="currentPage === 1"
+          class="page-btn">
+          Previous
+        </button>
+        <span class="page-info">
+          Page {{ currentPage }} of {{ totalPages }} ({{ totalUsers }} total)
+        </span>
+        <button 
+          (click)="changePage(currentPage + 1)" 
+          [disabled]="currentPage === totalPages"
+          class="page-btn">
+          Next
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="!isLoading && users.length === 0" class="no-users">
+      No users found.
+    </div>
+  </div>
+
+  <!-- Role Update Modal -->
+  <div *ngIf="showRoleModal" class="modal-overlay" (click)="closeRoleModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>Update User Role</h3>
+      <div *ngIf="selectedUser" class="modal-body">
+        <p><strong>User:</strong> {{ selectedUser.firstName }} {{ selectedUser.lastName }}</p>
+        <p><strong>Email:</strong> {{ selectedUser.email }}</p>
+        <div class="form-group">
+          <label for="role">Role:</label>
+          <select id="role" [(ngModel)]="newRole" class="form-control">
+            <option value="anonymous">Anonymous</option>
+            <option value="registered">Registered</option>
+            <option value="superadmin">Super Admin</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button (click)="closeRoleModal()" class="btn-cancel">Cancel</button>
+          <button (click)="updateUserRole()" class="btn-save">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

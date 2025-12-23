@@ -1,0 +1,20 @@
+<div class="dashboard-container">
+  <div class="dashboard-card">
+    <div class="header">
+      <h1>Welcome!</h1>
+      <button (click)="logout()" class="logout-btn">Logout</button>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      Loading...
+    </div>
+
+    <div *ngIf="!isLoading && user" class="welcome-content">
+      <div class="welcome-message">
+        <h2>Hello, {{ user.firstName }}!</h2>
+        <p class="welcome-text">Welcome to Napkin. You're successfully logged in.</p>
+      </div>
+    </div>
+  </div>
+</div>
+

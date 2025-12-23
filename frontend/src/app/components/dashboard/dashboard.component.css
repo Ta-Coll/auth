@@ -1,0 +1,70 @@
+.dashboard-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.dashboard-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 600px;
+  padding: 40px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+h1 {
+  color: #333;
+  font-size: 28px;
+}
+
+.logout-btn {
+  padding: 10px 20px;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+}
+
+.loading {
+  text-align: center;
+  color: #666;
+  padding: 40px;
+}
+
+.welcome-content {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.welcome-message h2 {
+  color: #333;
+  font-size: 32px;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.welcome-text {
+  color: #666;
+  font-size: 18px;
+  line-height: 1.6;
+}
+
