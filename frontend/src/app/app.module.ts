@@ -9,6 +9,8 @@ import { LoginComponent } from './components/login/login.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { SuperadminComponent } from './components/superadmin/superadmin.component';
 import { UnverifiedComponent } from './components/unverified/unverified.component';
+import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
+import { CompanyInviteComponent } from './components/company-invite/company-invite.component';
 import { AuthService } from './services/auth.service';
 import { AdminService } from './services/admin.service';
 import { CompanyService } from './services/company.service';
@@ -23,7 +25,9 @@ import { GuestGuard } from './guards/guest.guard';
     LoginComponent,
     DashboardComponent,
     SuperadminComponent,
-    UnverifiedComponent
+    UnverifiedComponent,
+    CompanyAdminComponent,
+    CompanyInviteComponent
   ],
   imports: [
     BrowserModule,

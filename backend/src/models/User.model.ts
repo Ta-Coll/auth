@@ -31,8 +31,9 @@ export class UserModel {
     const now = Date.now();
     const uid = uuidv4();
 
-    // Explicitly set default role to 'Member' - this is the ONLY valid default role
-    const defaultRole: UserRole = 'Member';
+    // New users have no platform role (null) - they're regular users
+    // Team roles are managed via Creds sub-collection
+    const defaultRole: UserRole = null;
 
     const user: User = {
       uid,
@@ -46,50 +47,16 @@ export class UserModel {
       lastName: data.lastName,
       timeZone: data.timeZone,
       username: data.username.toLowerCase().trim(),
-      role: defaultRole, // ALWAYS set to 'Member' for new signups
+      role: defaultRole, // null for regular users, 'Super Admin' for platform admins
     };
-
-    // Force role to be 'Member' - double check
-    if (user.role !== 'Member') {
-      user.role = 'Member';
-      console.warn('⚠️ Role was not Member, forcing it to Member');
-    }
-
-    // Log before insert to verify role
-    console.log('📝 Creating user - Role before insert:', user.role);
-    console.log('📝 User object role field:', user.role);
-    
-    // CRITICAL: Ensure role is explicitly 'Member' before insert
-    user.role = 'Member';
     
     const result = await this.collection.insertOne(user);
     
     if (!result.insertedId) {
       throw new Error('Failed to create user');
     }
-
-    // Immediately update the role in database to ensure it's 'Member'
-    // This is a safety measure in case something went wrong
-    const updateResult = await this.collection.updateOne(
-      { uid: user.uid },
-      { $set: { role: 'Member' } }
-    );
     
-    console.log('✅ User inserted and role explicitly set to Member in database');
-    console.log('📋 Update result:', updateResult.modifiedCount > 0 ? 'Role updated' : 'Role already correct');
-
-    // Verify the inserted document from database
-    const insertedUser = await this.collection.findOne({ uid: user.uid });
-    if (insertedUser) {
-      console.log('📋 Final user role from DB:', insertedUser.role);
-      if (insertedUser.role !== 'Member') {
-        console.error('⚠️ CRITICAL ERROR: Database still has wrong role! Expected Member, got:', insertedUser.role);
-        throw new Error(`Database role mismatch: Expected 'Member', got '${insertedUser.role}'`);
-      }
-    }
-    
-    // Ensure returned user has correct role
-    user.role = 'Member';
+    console.log('✅ User created with role:', user.role || 'null (regular user)');
 
     return user;
   }
@@ -135,7 +102,7 @@ export class UserModel {
     return result.modifiedCount > 0;
   }
 
-  async addTeamMembership(uid: string, teamId: string, role: 'Member' | 'Creator' | 'Admin'): Promise<boolean> {
+  async addTeamMembership(uid: string, teamId: string, role: string): Promise<boolean> {
     const membership = {
       teamId,
       role,
@@ -145,14 +112,13 @@ export class UserModel {
     const result = await this.collection.updateOne(
       { uid },
       { 
-        $addToSet: { teams: membership },
-        $set: { role: 'Member' } // Ensure user is Member when joining team
+        $addToSet: { teams: membership }
       }
     );
     return result.modifiedCount > 0;
   }
 
-  async addCompanyMembership(uid: string, companyId: string, role: 'Member' | 'Creator' | 'Admin'): Promise<boolean> {
+  async addCompanyMembership(uid: string, companyId: string, role: string): Promise<boolean> {
     const membership = {
       companyId,
       role,

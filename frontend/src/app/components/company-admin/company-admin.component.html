@@ -1,0 +1,148 @@
+<div class="company-admin-container">
+  <div class="company-admin-card">
+    <div class="header">
+      <div class="header-left">
+        <h1>{{ company?.name || 'Company Admin' }}</h1>
+        <p class="role-badge" [ngClass]="'role-' + userRole">{{ userRole | titlecase }}</p>
+      </div>
+      <div class="header-actions">
+        <button (click)="logout()" class="logout-btn">Logout</button>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      Loading...
+    </div>
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="!isLoading && !errorMessage && company" class="content">
+      <!-- Tabs Navigation -->
+      <div class="tabs-container">
+        <div class="tabs">
+          <button 
+            *ngIf="canAccessAdminTools"
+            (click)="setActiveTab('admin')" 
+            [class.active]="activeTab === 'admin'"
+            class="tab-btn">
+            Team Admin Tools
+          </button>
+          <button 
+            *ngIf="canAccessCreationTools"
+            (click)="setActiveTab('creation')" 
+            [class.active]="activeTab === 'creation'"
+            class="tab-btn">
+            Creation Tools
+          </button>
+          <button 
+            *ngIf="canAccessContentTools"
+            (click)="setActiveTab('content')" 
+            [class.active]="activeTab === 'content'"
+            class="tab-btn">
+            Content Tools
+          </button>
+          <button 
+            *ngIf="canAccessTeamChat"
+            (click)="setActiveTab('chat')" 
+            [class.active]="activeTab === 'chat'"
+            class="tab-btn">
+            Team Chat
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="tab-content">
+        <!-- Admin Tools Tab (Admin only) -->
+        <div *ngIf="activeTab === 'admin' && canAccessAdminTools" class="tab-panel">
+          <h2>Team Admin Tools</h2>
+          <div class="tools-grid">
+            <div class="tool-card" *ngIf="canInvite">
+              <h3>Invite Users</h3>
+              <p>Invite team members by email</p>
+              <button (click)="openInviteModal()" class="tool-btn">Invite</button>
+            </div>
+            
+            <div class="tool-card" *ngIf="canViewEventLogs">
+              <h3>Event Log Viewer</h3>
+              <p>View system events and activity logs</p>
+              <button class="tool-btn" disabled>View Logs</button>
+            </div>
+            
+            <div class="tool-card" *ngIf="canAccessAdminTools">
+              <h3>Database Scaling</h3>
+              <p>Manage database resources and scaling</p>
+              <button class="tool-btn" disabled>Manage</button>
+            </div>
+            
+            <div class="tool-card" *ngIf="canAccessAdminTools">
+              <h3>Security Settings</h3>
+              <p>Configure security policies and access</p>
+              <button class="tool-btn" disabled>Configure</button>
+            </div>
+            
+            <div class="tool-card" *ngIf="canAccessAdminTools">
+              <h3>AI Account Management</h3>
+              <p>Manage AI service accounts and settings</p>
+              <button class="tool-btn" disabled>Manage</button>
+            </div>
+            
+            <div class="tool-card" *ngIf="canAccessAdminTools">
+              <h3>Policy Manager</h3>
+              <p>Create and manage team policies</p>
+              <button class="tool-btn" disabled>Manage</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Creation Tools Tab (Admin + Creator) -->
+        <div *ngIf="activeTab === 'creation' && canAccessCreationTools" class="tab-panel">
+          <h2>Creation Tools</h2>
+          <div class="tools-grid">
+            <div class="tool-card">
+              <h3>App Builder</h3>
+              <p>Build and design applications</p>
+              <button class="tool-btn" disabled>Open Builder</button>
+            </div>
+            
+            <div class="tool-card">
+              <h3>UI Designer</h3>
+              <p>Design user interfaces</p>
+              <button class="tool-btn" disabled>Open Designer</button>
+            </div>
+            
+            <div class="tool-card">
+              <h3>Reports</h3>
+              <p>Create and view reports</p>
+              <button class="tool-btn" disabled>View Reports</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Content Tools Tab (All roles) -->
+        <div *ngIf="activeTab === 'content' && canAccessContentTools" class="tab-panel">
+          <h2>Content Tools</h2>
+          <div class="tools-grid">
+            <div class="tool-card">
+              <h3>Content Manager</h3>
+              <p>Manage content and documents</p>
+              <button class="tool-btn" disabled>Open Manager</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Team Chat Tab (All roles) -->
+        <div *ngIf="activeTab === 'chat' && canAccessTeamChat" class="tab-panel">
+          <h2>Team Chat</h2>
+          <div class="chat-placeholder">
+            <p>Team chat functionality - Coming soon</p>
+            <button class="tool-btn" disabled>Open Chat</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

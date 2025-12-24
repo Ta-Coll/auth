@@ -19,8 +19,9 @@ export interface User {
   optIn?: boolean;
   channels?: Channel[];
   badges?: string[];
-  // Role management
+  // Platform-level role (Super Admin only, separate from team roles)
   role?: UserRole;
+  // Legacy fields - keeping for backward compatibility
   teams?: TeamMembership[];
   companies?: CompanyMembership[];
 }
@@ -37,21 +38,25 @@ export interface Channel {
   [key: string]: any;
 }
 
+// Legacy interfaces - keeping for backward compatibility
+// Team roles are now managed via Creds sub-collection
 export interface TeamMembership {
   teamId: string;
-  role: TeamRole;
+  role: string; // Team role from creds
   joinedAt: number;
 }
 
 export interface CompanyMembership {
   companyId: string;
-  role: CompanyRole;
+  role: string; // Team role from creds
   joinedAt: number;
 }
 
-export type UserRole = 'Member' | 'Creator' | 'Super Admin';
-export type TeamRole = 'Member' | 'Creator' | 'Admin';
-export type CompanyRole = 'Member' | 'Creator' | 'Admin';
+// Platform-level role (separate from team roles)
+export type UserRole = 'Super Admin' | null; // Super Admin is platform-level only, null means regular user
+
+// Team roles are handled via Creds sub-collection (see creds.types.ts)
+// Team roles: 'member' | 'creator' | 'admin' (3 roles only)
 
 export interface SignupRequest {
   email: string;

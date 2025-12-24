@@ -1,0 +1,189 @@
+<div class="invite-container">
+  <div class="invite-card">
+    <div class="header">
+      <div class="header-left">
+        <h1>{{ companyName || 'Company Invites' }}</h1>
+        <p class="subtitle">Manage team members and invitations</p>
+      </div>
+      <div class="header-actions">
+        <button (click)="goBack()" class="btn-secondary">Back</button>
+        <button (click)="logout()" class="logout-btn">Logout</button>
+      </div>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">
+      Loading...
+    </div>
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="!isLoading && !errorMessage" class="content">
+      <!-- Action Buttons -->
+      <div class="actions-section">
+        <button (click)="openInviteModal()" class="btn-primary">Invite</button>
+        <button (click)="openInsertModal()" class="btn-secondary">Insert</button>
+      </div>
+
+      <!-- Members List -->
+      <div class="members-section">
+        <h2>Team Members ({{ members.length }})</h2>
+        <div *ngIf="members.length === 0" class="no-members">
+          <p>No members yet. Invite your first team member!</p>
+        </div>
+
+        <div *ngIf="members.length > 0" class="members-table">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let member of members">
+                <td>
+                  <span *ngIf="member.firstName || member.lastName">
+                    {{ member.firstName }} {{ member.lastName }}
+                  </span>
+                  <span *ngIf="!member.firstName && !member.lastName" class="text-muted">
+                    Not registered
+                  </span>
+                </td>
+                <td>{{ member.email }}</td>
+                <td>
+                  <span class="badge" [ngClass]="getRoleBadgeClass(member.role)">
+                    {{ member.role | titlecase }}
+                  </span>
+                </td>
+                <td>
+                  <span class="badge" [ngClass]="getStatusBadgeClass(member.status)">
+                    {{ member.status | titlecase }}
+                  </span>
+                </td>
+                <td>
+                  <button (click)="deleteMember(member)" class="btn-delete-member" title="Delete member">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invite Modal -->
+    <div *ngIf="showInviteModal" class="modal-overlay" (click)="closeInviteModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <h3>Invite New Member</h3>
+        <div class="modal-body">
+          <form (ngSubmit)="sendInvite()" #inviteFormRef="ngForm">
+            <div class="form-group">
+              <label for="invite-email">Email Address *</label>
+              <input 
+                type="email" 
+                id="invite-email"
+                name="email"
+                [(ngModel)]="inviteForm.email" 
+                class="form-control" 
+                placeholder="user@example.com"
+                required>
+            </div>
+
+            <div class="form-group">
+              <label for="invite-role">Role *</label>
+              <select 
+                id="invite-role"
+                name="role"
+                [(ngModel)]="inviteForm.role" 
+                class="form-control"
+                required>
+                <option value="member">Member</option>
+                <option value="creator">Creator</option>
+              </select>
+              <small class="form-hint">Members have access to content tools and chat. Creators have access to creation tools, content tools, and chat.</small>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" (click)="closeInviteModal()" class="btn-cancel">Cancel</button>
+              <button type="submit" [disabled]="!inviteFormRef.valid || isInviting" class="btn-save">
+                {{ isInviting ? 'Sending...' : 'Send Invite' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Insert Modal -->
+    <div *ngIf="showInsertModal" class="modal-overlay" (click)="closeInsertModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <h3>Add User Manually</h3>
+        <div class="modal-body">
+          <form (ngSubmit)="addUserManually()" #insertFormRef="ngForm">
+            <div class="form-group">
+              <label for="insert-email">Email Address *</label>
+              <input 
+                type="email" 
+                id="insert-email"
+                name="email"
+                [(ngModel)]="insertForm.email" 
+                class="form-control" 
+                placeholder="user@example.com"
+                required>
+            </div>
+
+            <div class="form-group">
+              <label for="insert-firstname">First Name</label>
+              <input 
+                type="text" 
+                id="insert-firstname"
+                name="firstName"
+                [(ngModel)]="insertForm.firstName" 
+                class="form-control" 
+                placeholder="First Name">
+            </div>
+
+            <div class="form-group">
+              <label for="insert-lastname">Last Name</label>
+              <input 
+                type="text" 
+                id="insert-lastname"
+                name="lastName"
+                [(ngModel)]="insertForm.lastName" 
+                class="form-control" 
+                placeholder="Last Name">
+            </div>
+
+            <div class="form-group">
+              <label for="insert-role">Role *</label>
+              <select 
+                id="insert-role"
+                name="role"
+                [(ngModel)]="insertForm.role" 
+                class="form-control"
+                required>
+                <option value="member">Member</option>
+                <option value="creator">Creator</option>
+              </select>
+              <small class="form-hint">Members have access to content tools and chat. Creators have access to creation tools, content tools, and chat.</small>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" (click)="closeInsertModal()" class="btn-cancel">Cancel</button>
+              <button type="submit" [disabled]="!insertFormRef.valid || isAddingUser" class="btn-save">
+                {{ isAddingUser ? 'Adding...' : 'Add User' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

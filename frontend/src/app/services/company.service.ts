@@ -33,6 +33,26 @@ export interface CompaniesResponse {
 export interface InviteRequest {
   email: string;
   companyId: string;
+  role?: 'member' | 'creator';
+}
+
+export interface CompanyMembersResponse {
+  success: boolean;
+  data: {
+    companyId: string;
+    companyName: string;
+    members: Array<{
+      uid?: string;
+      email: string;
+      firstName?: string;
+      lastName?: string;
+      role: 'member' | 'creator' | 'admin';
+      status: 'invited' | 'accepted' | 'inactive' | 'removed';
+      invitedBy?: string;
+      startDate?: number;
+      lastLogin?: number;
+    }>;
+  };
 }
 
 export interface InviteResponse {
@@ -103,6 +123,29 @@ export class CompanyService {
 
   getPendingInvites(): Observable<PendingInvitesResponse> {
     return this.http.get<PendingInvitesResponse>(`${this.apiUrl}/invites/pending`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  getCompanyMembers(companyId: string): Observable<CompanyMembersResponse> {
+    return this.http.get<CompanyMembersResponse>(`${this.apiUrl}/${companyId}/members`, {
+      headers: this.getHeaders()
+    });
+  }
+
+  addMemberManually(companyId: string, memberData: {
+    email: string;
+    role: 'member' | 'creator';
+    firstName?: string;
+    lastName?: string;
+  }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${companyId}/members/manual`, memberData, {
+      headers: this.getHeaders()
+    });
+  }
+
+  deleteMember(companyId: string, email: string, uid?: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${companyId}/members/delete`, { email, uid }, {
       headers: this.getHeaders()
     });
   }

@@ -202,14 +202,11 @@ router.patch('/users/:uid', async (req: Request, res: Response): Promise<void> =
       // Prevent removing Super Admin role from the last Super Admin
       if (role !== 'Super Admin') {
         const user = await userModel.findByUid(uid);
-        if (user?.role === 'Super Admin' || user?.role === 'superadmin') {
+        if (user?.role === 'Super Admin') {
           const db = getDatabase();
           const usersCollection = db.collection<User>('users');
           const superAdminCount = await usersCollection.countDocuments({ 
-            $or: [
-              { role: 'Super Admin' },
-              { role: 'superadmin' }
-            ],
+            role: 'Super Admin',
             removed: false 
           });
           
@@ -291,14 +288,11 @@ router.delete('/users/:uid', async (req: Request, res: Response): Promise<void> 
     }
 
     // Prevent deleting the last Super Admin
-    if (user.role === 'Super Admin' || user.role === 'superadmin') {
+    if (user.role === 'Super Admin') {
       const db = getDatabase();
       const usersCollection = db.collection<User>('users');
       const superAdminCount = await usersCollection.countDocuments({ 
-        $or: [
-          { role: 'Super Admin' },
-          { role: 'superadmin' }
-        ],
+        role: 'Super Admin',
         removed: false 
       });
       
@@ -315,6 +309,20 @@ router.delete('/users/:uid', async (req: Request, res: Response): Promise<void> 
     // Hard delete: actually remove the document from database
     const db = getDatabase();
     const usersCollection = db.collection<User>('users');
+    
+    // Also delete related Creds documents (company memberships)
+    const { CredsModel } = await import('../models/Creds.model');
+    const credsCollection = CredsModel.getCredsCollection();
+    await credsCollection.deleteMany({ uid });
+
+    // Remove user from all companies (remove from members array)
+    const companiesCollection = db.collection('companies');
+    await companiesCollection.updateMany(
+      { 'members.uid': uid },
+      { $pull: { members: { uid: uid } } } as any
+    );
+
+    // Delete user from users collection
     const result = await usersCollection.deleteOne({ uid });
 
     if (result.deletedCount === 0) {

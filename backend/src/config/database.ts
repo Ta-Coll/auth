@@ -26,6 +26,7 @@ export async function connectDatabase(): Promise<Db> {
     await ensureTeamsCollection();
     await ensureCompaniesCollection();
     await ensureInvitesCollection();
+    await ensureCredsCollection();
     
     return db;
   } catch (error) {
@@ -103,6 +104,25 @@ async function ensureInvitesCollection(): Promise<void> {
     console.log('✅ Invites collection indexes created');
   } catch (error) {
     console.error('Error creating invite indexes:', error);
+  }
+}
+
+async function ensureCredsCollection(): Promise<void> {
+  if (!db) return;
+
+  try {
+    const credsCollection = db.collection('creds');
+    
+    // Create indexes
+    await credsCollection.createIndex({ uid: 1, companyId: 1 }, { unique: true });
+    await credsCollection.createIndex({ uid: 1 });
+    await credsCollection.createIndex({ companyId: 1 });
+    await credsCollection.createIndex({ status: 1 });
+    await credsCollection.createIndex({ role: 1 });
+    
+    console.log('✅ Creds collection indexes created');
+  } catch (error) {
+    console.error('Error creating creds indexes:', error);
   }
 }
 

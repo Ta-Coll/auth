@@ -10,7 +10,7 @@ export class InviteModel {
     this.collection = getDatabase().collection<Invite>('invites');
   }
 
-  async createInvite(companyId: string, email: string, invitedBy: string): Promise<Invite> {
+  async createInvite(companyId: string, email: string, invitedBy: string, role?: Invite['role']): Promise<Invite> {
     const now = Date.now();
     const inviteId = uuidv4();
 
@@ -21,6 +21,7 @@ export class InviteModel {
       invitedBy,
       invitedAt: now,
       status: 'pending',
+      role: role || 'member', // Default to 'member' if not specified
     };
 
     const result = await this.collection.insertOne(invite);
@@ -43,6 +44,12 @@ export class InviteModel {
   }
 
   async findByCompany(companyId: string): Promise<Invite[]> {
+    return await this.collection
+      .find({ companyId })
+      .toArray();
+  }
+
+  async findByCompanyId(companyId: string): Promise<Invite[]> {
     return await this.collection
       .find({ companyId })
       .toArray();

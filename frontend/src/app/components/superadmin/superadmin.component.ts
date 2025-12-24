@@ -49,7 +49,22 @@ export class SuperadminComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadUsers();
+    // Refresh user data to ensure role is up to date
+    this.authService.getCurrentUser().subscribe({
+      next: (response) => {
+        if (response.success) {
+          // User data refreshed, now load users
+          this.loadUsers();
+        } else {
+          this.errorMessage = 'Failed to verify user authentication';
+          this.isLoading = false;
+        }
+      },
+      error: () => {
+        this.errorMessage = 'Failed to verify user authentication';
+        this.isLoading = false;
+      }
+    });
   }
 
   loadUsers(): void {

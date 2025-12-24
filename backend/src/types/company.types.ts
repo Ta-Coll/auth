@@ -14,11 +14,12 @@ export interface CompanyMember {
   username?: string;
   firstName: string;
   lastName: string;
-  role: CompanyRole;
+  role: CompanyRole; // 'member' | 'creator' | 'admin' (3 roles only)
   joinedAt: number;
 }
 
-export type CompanyRole = 'Member' | 'Creator' | 'Admin';
+// Team roles for company membership (3 roles only)
+export type CompanyRole = 'member' | 'creator' | 'admin';
 
 export interface CreateCompanyRequest {
   name: string;
@@ -37,6 +38,7 @@ export interface CompanyResponse {
 export interface InviteRequest {
   email: string;
   companyId: string;
+  role?: 'member' | 'creator'; // Team role to assign (only member or creator, admin cannot be invited)
 }
 
 export interface Invite {
@@ -47,5 +49,6 @@ export interface Invite {
   invitedAt: number;
   status: 'pending' | 'accepted' | 'declined';
   acceptedAt?: number;
+  role?: 'member' | 'creator' | 'admin'; // Team role to assign (3 roles only)
 }
 

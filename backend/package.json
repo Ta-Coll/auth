@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "lint": "eslint src --ext .ts",
-    "create-superadmin": "tsx scripts/create-superadmin.ts"
+    "create-superadmin": "tsx scripts/create-superadmin.ts",
+    "check-superadmin": "tsx scripts/check-superadmin.ts",
+    "fix-superadmin": "tsx scripts/fix-superadmin.ts"
   },
   "keywords": ["auth", "mongodb", "express", "lambda"],
   "author": "",

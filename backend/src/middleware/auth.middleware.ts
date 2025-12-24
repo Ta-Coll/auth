@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, extractTokenFromHeader } from '../utils/jwt.util';
 import { UserModel } from '../models/User.model';
-import { UserRole, TeamRole } from '../types/user.types';
+import { UserRole } from '../types/user.types';
 
 // Extend Express Request to include user
 declare global {
@@ -12,7 +12,7 @@ declare global {
         email: string;
         username?: string;
         role?: UserRole;
-        teams?: Array<{ teamId: string; role: TeamRole }>;
+        teams?: Array<{ teamId: string; role: string }>; // Team roles are strings
       };
     }
   }
@@ -44,6 +44,14 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
       role: user.role,
       teams: user.teams,
     };
+
+    // Debug logging for authentication
+    console.log('🔐 Authenticated user:', {
+      uid: req.user.uid,
+      email: req.user.email,
+      role: req.user.role,
+      roleType: typeof req.user.role
+    });
 
     next();
   } catch (error) {
@@ -83,13 +91,29 @@ export function requireSuperAdmin(): (req: Request, res: Response, next: NextFun
       return;
     }
 
-    // Accept both 'Super Admin' (new) and 'superadmin' (old) for backward compatibility
+    // Only 'Super Admin' is valid platform role
     const userRole = req.user.role;
-    if (userRole !== 'Super Admin' && userRole !== 'superadmin') {
+    
+    // Debug logging
+    console.log('🔍 Super Admin Check:', {
+      uid: req.user.uid,
+      email: req.user.email,
+      role: userRole,
+      roleType: typeof userRole,
+      roleValue: JSON.stringify(userRole),
+      isSuperAdmin: userRole === 'Super Admin'
+    });
+    
+    if (userRole !== 'Super Admin') {
       res.status(403).json({ 
         error: 'Super Admin access required', 
         code: 'SUPERADMIN_REQUIRED',
-        current: req.user.role
+        current: req.user.role || 'null',
+        debug: {
+          receivedRole: userRole,
+          roleType: typeof userRole,
+          expectedRole: 'Super Admin'
+        }
       });
       return;
     }
@@ -98,7 +122,7 @@ export function requireSuperAdmin(): (req: Request, res: Response, next: NextFun
   };
 }
 
-export function requireTeamRole(teamId: string, ...allowedRoles: TeamRole[]): (req: Request, res: Response, next: NextFunction) => void {
+export function requireTeamRole(teamId: string, ...allowedRoles: Array<'member' | 'creator' | 'admin'>): (req: Request, res: Response, next: NextFunction) => void {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required', code: 'AUTH_REQUIRED' });
@@ -115,7 +139,7 @@ export function requireTeamRole(teamId: string, ...allowedRoles: TeamRole[]): (r
       return;
     }
 
-    if (!allowedRoles.includes(teamMembership.role)) {
+    if (!allowedRoles.includes(teamMembership.role as 'member' | 'creator' | 'admin')) {
       res.status(403).json({ 
         error: 'Insufficient team permissions', 
         code: 'INSUFFICIENT_TEAM_PERMISSIONS',

@@ -3,9 +3,9 @@ import { authenticate } from '../middleware/auth.middleware';
 import { CompanyModel } from '../models/Company.model';
 import { InviteModel } from '../models/Invite.model';
 import { UserModel } from '../models/User.model';
-import { CreateCompanyRequest, InviteRequest, Company } from '../types/company.types';
+import { CreateCompanyRequest, InviteRequest, Company, CompanyRole } from '../types/company.types';
+import { Creds } from '../types/creds.types';
 import { getDatabase } from '../config/database';
-import { UserRole } from '../types/user.types';
 
 const router = Router();
 
@@ -68,31 +68,37 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     // Create company
     const company = await companyModel.createCompany(data, req.user.uid);
 
-    // Add creator as Creator member to the company
+    // Add creator as Admin (team admin) to the company
     const companyMember = {
       uid: user.uid,
       email: user.email,
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: 'Creator' as const,
+      role: 'admin' as const, // Team Admin role
       joinedAt: Date.now(),
     };
 
     await companyModel.addMember(company.companyId, companyMember);
 
-    // Add company membership to user
-    await userModel.addCompanyMembership(req.user.uid, company.companyId, 'Creator');
-
-    // Update user role to Creator
-    await userModel.updateRole(req.user.uid, 'Creator');
+    // Create Creds document for this user-company relationship
+    const { CredsModel } = await import('../models/Creds.model');
+    const credsModel = new CredsModel(user.uid);
+    await credsModel.createCreds(user.uid, company.companyId, {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: 'admin', // Team Admin role
+      invitedBy: user.uid, // Self-created
+      status: 'accepted',
+    });
 
     // Get updated company with members
     const updatedCompany = await companyModel.findByCompanyId(company.companyId);
 
     res.status(201).json({
       success: true,
-      message: 'Company created successfully. Your role has been updated to Creator.',
+      message: 'Company created successfully. You are now the team Admin.',
       data: {
         companyId: company.companyId,
         name: company.name,
@@ -183,7 +189,7 @@ router.post('/invite', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { email, companyId }: InviteRequest = req.body;
+    const { email, companyId, role }: InviteRequest = req.body;
 
     if (!email || !email.trim()) {
       res.status(400).json({
@@ -218,13 +224,28 @@ router.post('/invite', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Check if user is Creator or Admin of the company
+    // Check if user is Admin (team admin) of the company
     const userMember = company.members?.find(m => m.uid === req.user.uid);
-    if (!userMember || (userMember.role !== 'Creator' && userMember.role !== 'Admin')) {
+    if (!userMember || userMember.role !== 'admin') {
       res.status(403).json({
         success: false,
-        error: 'Only Creators and Admins can invite users',
+        error: 'Only team Admins can invite users',
         code: 'INSUFFICIENT_PERMISSIONS',
+      });
+      return;
+    }
+
+    // Get role from request (default to 'member')
+    // Only 'member' or 'creator' can be invited, 'admin' cannot be assigned via invite
+    const inviteRole = role || 'member';
+    
+    // Validate role - only member or creator can be invited
+    const validRoles: Array<'member' | 'creator'> = ['member', 'creator'];
+    if (!validRoles.includes(inviteRole)) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid role. Must be one of: ${validRoles.join(', ')}. Admin role cannot be assigned via invite.`,
+        code: 'INVALID_ROLE',
       });
       return;
     }
@@ -258,8 +279,9 @@ router.post('/invite', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Create invite
-    const invite = await inviteModel.createInvite(companyId, email, req.user.uid);
+    // Create invite with role - save to invites collection only
+    // Creds will be created when invite is accepted
+    const invite = await inviteModel.createInvite(companyId, email, req.user.uid, inviteRole as any);
 
     res.status(201).json({
       success: true,
@@ -309,16 +331,6 @@ router.post('/invite/:inviteId/accept', async (req: Request, res: Response): Pro
       return;
     }
 
-    // Verify invite is for current user's email
-    if (invite.email.toLowerCase() !== req.user.email.toLowerCase()) {
-      res.status(403).json({
-        success: false,
-        error: 'This invite is not for your email',
-        code: 'INVITE_MISMATCH',
-      });
-      return;
-    }
-
     // Verify invite is pending
     if (invite.status !== 'pending') {
       res.status(400).json({
@@ -340,15 +352,46 @@ router.post('/invite/:inviteId/accept', async (req: Request, res: Response): Pro
       return;
     }
 
-    // Get user
-    const user = await userModel.findByUid(req.user.uid);
+    // Check if user exists (by email from invite)
+    let user = await userModel.findByEmail(invite.email);
+    
+    // If user doesn't exist, create them with default password "12345"
     if (!user) {
-      res.status(404).json({
-        success: false,
-        error: 'User not found',
-        code: 'USER_NOT_FOUND',
-      });
-      return;
+      // Generate unique username from email
+      const baseUsername = invite.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const uniqueUsername = `${baseUsername}_${Date.now().toString().slice(-6)}`;
+      
+      // Create user with default password "12345"
+      user = await userModel.createUser({
+        email: invite.email.toLowerCase().trim(),
+        username: uniqueUsername,
+        password: '12345', // Default password - user can change it later
+        firstName: '', // Will be empty, user can update later
+        lastName: '', // Will be empty, user can update later
+        timeZone: 'America/New_York', // Default timezone
+      }, invite.invitedBy);
+
+      // Set email as verified since user was added by admin/invite
+      await userModel.updateEmailVerified(user.uid, true);
+    } else {
+      // User exists - verify it's the same user accepting the invite (if logged in)
+      if (req.user && user.uid !== req.user.uid) {
+        res.status(403).json({
+          success: false,
+          error: 'This invite is not for your account',
+          code: 'INVITE_MISMATCH',
+        });
+        return;
+      }
+      // If user exists but not logged in, verify email matches
+      if (!req.user && invite.email.toLowerCase() !== user.email.toLowerCase()) {
+        res.status(403).json({
+          success: false,
+          error: 'This invite is not for your email',
+          code: 'INVITE_MISMATCH',
+        });
+        return;
+      }
     }
 
     // Check if already a member
@@ -362,22 +405,37 @@ router.post('/invite/:inviteId/accept', async (req: Request, res: Response): Pro
       return;
     }
 
-    // Add user as Member to company
+    // Get role from invite (default to 'member' if not specified)
+    const teamRole = invite.role || 'member';
+
+    // Add user to company with the role from invite
     const companyMember = {
       uid: user.uid,
       email: user.email,
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: 'Member' as const,
+      role: teamRole as CompanyRole,
       joinedAt: Date.now(),
     };
 
     await companyModel.addMember(invite.companyId, companyMember);
-    await userModel.addCompanyMembership(req.user.uid, invite.companyId, 'Member');
 
-    // Mark invite as accepted
-    await inviteModel.acceptInvite(inviteId);
+    // Create Creds document for this user-company relationship
+    // This is where the user is saved to Creds collection after accepting invite
+    const { CredsModel } = await import('../models/Creds.model');
+    const credsModel = new CredsModel(user.uid);
+    await credsModel.createCreds(user.uid, invite.companyId, {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: teamRole as any,
+      invitedBy: invite.invitedBy,
+      status: 'accepted',
+    });
+
+    // Remove invite from invites collection (delete it)
+    await inviteModel.deleteInvite(inviteId);
 
     res.status(200).json({
       success: true,
@@ -393,6 +451,392 @@ router.post('/invite/:inviteId/accept', async (req: Request, res: Response): Pro
       success: false,
       error: 'Failed to accept invite',
       code: 'ACCEPT_INVITE_FAILED',
+    });
+  }
+});
+
+// Get all company members with status (Admin only)
+router.get('/:companyId/members', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED',
+      });
+      return;
+    }
+
+    const { companyId } = req.params;
+    const companyModel = getCompanyModel();
+    const { CredsModel } = await import('../models/Creds.model');
+
+    // Verify company exists
+    const company = await companyModel.findByCompanyId(companyId);
+    if (!company) {
+      res.status(404).json({
+        success: false,
+        error: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Check if user is Admin (team admin) of the company
+    const userMember = company.members?.find(m => m.uid === req.user.uid);
+    if (!userMember || userMember.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Only team Admins can view company members',
+        code: 'INSUFFICIENT_PERMISSIONS',
+      });
+      return;
+    }
+
+    // Get all creds for this company (accepted members)
+    const credsCollection = CredsModel.getCredsCollection();
+    const allCreds = await credsCollection
+      .find({ companyId })
+      .toArray();
+
+    // Get pending invites for this company (invited but not accepted yet)
+    const inviteModel = getInviteModel();
+    const pendingInvites = await inviteModel.findByCompanyId(companyId);
+
+    // Map all Creds documents to members list (accepted members)
+    const membersList = allCreds.map(creds => ({
+      uid: creds.uid,
+      email: creds.email,
+      firstName: creds.firstName || '',
+      lastName: creds.lastName || '',
+      role: creds.role,
+      status: creds.status || 'accepted',
+      invitedBy: creds.invitedBy,
+      startDate: creds.startDate,
+      lastLogin: creds.lastLogin,
+    }));
+
+    // Add pending invites as "invited" status members
+    // These are in invites collection, will be moved to Creds when accepted
+    pendingInvites
+      .filter(inv => inv.status === 'pending')
+      .forEach(invite => {
+        // Check if already in members list (shouldn't happen, but safety check)
+        const exists = membersList.some(m => m.email === invite.email);
+        if (!exists) {
+          membersList.push({
+            uid: undefined, // No uid yet, user hasn't accepted
+            email: invite.email,
+            firstName: '',
+            lastName: '',
+            role: invite.role || 'member',
+            status: 'invited',
+            invitedBy: invite.invitedBy,
+            startDate: invite.invitedAt,
+            lastLogin: undefined,
+          });
+        }
+      });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        companyId,
+        companyName: company.name,
+        members: membersList,
+      },
+    });
+  } catch (error) {
+    console.error('Get company members error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get company members',
+      code: 'GET_MEMBERS_FAILED',
+    });
+  }
+});
+
+// Manually add user to company (for testing - bypasses invite system)
+router.post('/:companyId/members/manual', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED',
+      });
+      return;
+    }
+
+    const { companyId } = req.params;
+    const { email, role, firstName, lastName } = req.body;
+
+    if (!email || !email.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Email is required',
+        code: 'MISSING_EMAIL',
+      });
+      return;
+    }
+
+    // Validate role - only member or creator can be added manually (admin is set when creating company)
+    const validRoles: Array<'member' | 'creator'> = ['member', 'creator'];
+    const memberRole = role || 'member';
+    if (!validRoles.includes(memberRole)) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
+        code: 'INVALID_ROLE',
+      });
+      return;
+    }
+
+    const companyModel = getCompanyModel();
+    const userModel = getUserModel();
+    const { CredsModel } = await import('../models/Creds.model');
+
+    // Verify company exists
+    const company = await companyModel.findByCompanyId(companyId);
+    if (!company) {
+      res.status(404).json({
+        success: false,
+        error: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Check if user is Admin (team admin) of the company
+    const userMember = company.members?.find(m => m.uid === req.user.uid);
+    if (!userMember || userMember.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Only team Admins can add members',
+        code: 'INSUFFICIENT_PERMISSIONS',
+      });
+      return;
+    }
+
+    // Check if user exists
+    const existingUser = await userModel.findByEmail(email);
+    
+    if (existingUser) {
+      // User exists - check if already a member
+      const isMember = company.members?.some(m => m.uid === existingUser.uid);
+      if (isMember) {
+        res.status(400).json({
+          success: false,
+          error: 'User is already a member of this company',
+          code: 'ALREADY_MEMBER',
+        });
+        return;
+      }
+
+      // Add user to company
+      const companyMember = {
+        uid: existingUser.uid,
+        email: existingUser.email,
+        username: existingUser.username,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
+        role: memberRole as CompanyRole,
+        joinedAt: Date.now(),
+      };
+
+      await companyModel.addMember(companyId, companyMember);
+
+      // Create Creds document
+      const credsModel = new CredsModel(existingUser.uid);
+      await credsModel.createCreds(existingUser.uid, companyId, {
+        email: existingUser.email,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
+        role: memberRole,
+        invitedBy: req.user.uid,
+        status: 'accepted',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'User added to company successfully',
+        data: {
+          uid: existingUser.uid,
+          email: existingUser.email,
+          role: memberRole,
+          status: 'accepted',
+        },
+      });
+    } else {
+      // User doesn't exist - create user in users collection and Creds with accepted status
+      // Set default password as "12345" (user can change it later via password reset)
+      const defaultPassword = '12345';
+      
+      // Generate unique username from email
+      const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const uniqueUsername = `${baseUsername}_${Date.now().toString().slice(-6)}`;
+      
+      // Create user in users collection
+      const newUser = await userModel.createUser({
+        email: email.toLowerCase().trim(),
+        username: uniqueUsername,
+        password: defaultPassword,
+        firstName: firstName || '',
+        lastName: lastName || '',
+        timeZone: 'America/New_York', // Default timezone
+      }, req.user.uid);
+
+      // Set email as verified since user was added by admin
+      await userModel.updateEmailVerified(newUser.uid, true);
+
+      // Add user to company
+      const companyMember = {
+        uid: newUser.uid,
+        email: newUser.email,
+        username: newUser.username,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        role: memberRole as CompanyRole,
+        joinedAt: Date.now(),
+      };
+
+      await companyModel.addMember(companyId, companyMember);
+
+      // Create Creds document with accepted status
+      const credsModel = new CredsModel(newUser.uid);
+      await credsModel.createCreds(newUser.uid, companyId, {
+        email: newUser.email,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        role: memberRole,
+        invitedBy: req.user.uid,
+        status: 'accepted',
+      });
+
+      res.status(200).json({
+        success: true,
+        message: 'User created and added to company successfully',
+        data: {
+          uid: newUser.uid,
+          email: newUser.email,
+          role: memberRole,
+          status: 'accepted',
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Manual add member error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to add member',
+      code: 'ADD_MEMBER_FAILED',
+    });
+  }
+});
+
+// Delete member from company (Admin only)
+router.post('/:companyId/members/delete', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED',
+      });
+      return;
+    }
+
+    const { companyId } = req.params;
+    const { email, uid } = req.body;
+
+    if (!email || !email.trim()) {
+      res.status(400).json({
+        success: false,
+        error: 'Email is required',
+        code: 'MISSING_EMAIL',
+      });
+      return;
+    }
+
+    const companyModel = getCompanyModel();
+    const { CredsModel } = await import('../models/Creds.model');
+    const inviteModel = getInviteModel();
+
+    // Verify company exists
+    const company = await companyModel.findByCompanyId(companyId);
+    if (!company) {
+      res.status(404).json({
+        success: false,
+        error: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Check if user is Admin (team admin) of the company
+    const userMember = company.members?.find(m => m.uid === req.user.uid);
+    if (!userMember || userMember.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Only team Admins can delete members',
+        code: 'INSUFFICIENT_PERMISSIONS',
+      });
+      return;
+    }
+
+    // Prevent admin from deleting themselves
+    if (uid && uid === req.user.uid) {
+      res.status(400).json({
+        success: false,
+        error: 'You cannot delete yourself from the company',
+        code: 'CANNOT_DELETE_SELF',
+      });
+      return;
+    }
+
+    // Delete Creds document (if exists)
+    const credsCollection = CredsModel.getCredsCollection();
+    if (uid) {
+      // Delete by uid and companyId
+      await credsCollection.deleteMany({ uid, companyId });
+    } else {
+      // Delete by email and companyId (for invited users without uid)
+      await credsCollection.deleteMany({ email: email.toLowerCase().trim(), companyId });
+    }
+
+    // Remove from company members array
+    if (uid) {
+      await companyModel.removeMember(companyId, uid);
+    } else {
+      // For invited users without uid, remove by email match
+      const db = getDatabase();
+      const companiesCollection = db.collection('companies');
+      await companiesCollection.updateOne(
+        { companyId },
+        { $pull: { members: { email: email.toLowerCase().trim() } } } as any
+      );
+    }
+
+    // Delete any pending invites for this email/company
+    const pendingInvites = await inviteModel.findByCompanyId(companyId);
+    const invitesToDelete = pendingInvites.filter(
+      inv => inv.email.toLowerCase().trim() === email.toLowerCase().trim()
+    );
+    for (const invite of invitesToDelete) {
+      await inviteModel.deleteInvite(invite.inviteId);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Member deleted successfully',
+      data: { email, uid },
+    });
+  } catch (error) {
+    console.error('Delete member error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete member',
+      code: 'DELETE_MEMBER_FAILED',
     });
   }
 });

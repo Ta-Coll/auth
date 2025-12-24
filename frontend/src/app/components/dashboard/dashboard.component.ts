@@ -61,10 +61,8 @@ export class DashboardComponent implements OnInit {
             return;
           }
 
-          // Load user's companies if they are a Creator
-          if (this.user?.role === 'Creator') {
-            this.loadCompanies();
-          }
+          // Check if user is admin in any company and redirect (admins should not see dashboard)
+          this.checkAndRedirectToCompanyAdmin();
         } else {
           this.router.navigate(['/login']);
         }
@@ -73,6 +71,34 @@ export class DashboardComponent implements OnInit {
       error: () => {
         this.router.navigate(['/login']);
         this.isLoading = false;
+      }
+    });
+  }
+
+  checkAndRedirectToCompanyAdmin(): void {
+    // Check if user is admin in any company
+    this.companyService.getMyCompanies().subscribe({
+      next: (response) => {
+        if (response.success && response.data.companies) {
+          // Find first company where user is admin
+          const adminCompany = response.data.companies.find((company: any) => {
+            const member = company.members?.find((m: any) => m.uid === this.user?.uid);
+            return member?.role === 'admin';
+          });
+
+          if (adminCompany) {
+            // Redirect to company admin page
+            this.router.navigate(['/company', adminCompany.companyId, 'admin'], { replaceUrl: true });
+            return;
+          }
+        }
+        // Not an admin in any company, load companies for display
+        this.loadCompanies();
+      },
+      error: (error) => {
+        console.error('Error loading companies:', error);
+        // On error, still load companies for display
+        this.loadCompanies();
       }
     });
   }
@@ -119,11 +145,10 @@ export class DashboardComponent implements OnInit {
     }).subscribe({
       next: (response) => {
         if (response.success) {
-          // Reload user to get updated role and companies
-          this.loadUser();
           this.closeCreateCompanyModal();
           this.isCreatingCompany = false;
-          alert(response.message || 'Company created successfully! Your role has been updated to Creator.');
+          // Redirect to company admin page
+          this.router.navigate(['/company', response.data.companyId, 'admin'], { replaceUrl: true });
         }
       },
       error: (error) => {
@@ -180,6 +205,28 @@ export class DashboardComponent implements OnInit {
         this.isInviting = false;
       }
     });
+  }
+
+  hasAdminRole(): boolean {
+    return this.userCompanies.some((company: any) => {
+      const member = company.members?.find((m: any) => m.uid === this.user?.uid);
+      return member?.role === 'admin';
+    });
+  }
+
+  getUserRoleInCompany(company: any): string | null {
+    if (!this.user || !company.members) return null;
+    const member = company.members.find((m: any) => m.uid === this.user?.uid);
+    return member?.role || null;
+  }
+
+  canInviteInCompany(company: any): boolean {
+    const role = this.getUserRoleInCompany(company);
+    return role === 'admin'; // Only admins can invite
+  }
+
+  goToCompanyAdmin(companyId: string): void {
+    this.router.navigate(['/company', companyId, 'admin'], { replaceUrl: true });
   }
 
   logout(): void {
