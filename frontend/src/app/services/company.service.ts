@@ -149,5 +149,19 @@ export class CompanyService {
       headers: this.getHeaders()
     });
   }
+
+  updateMemberRole(companyId: string, uid: string, role: 'member' | 'creator' | 'admin'): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${companyId}/members/${uid}/role`, { role }, {
+      headers: this.getHeaders()
+    });
+  }
+
+  updateInviteRole(companyId: string, email: string, role: 'member' | 'creator'): Observable<any> {
+    // Encode email for URL
+    const encodedEmail = encodeURIComponent(email);
+    return this.http.patch(`${this.apiUrl}/${companyId}/invites/${encodedEmail}/role`, { role }, {
+      headers: this.getHeaders()
+    });
+  }
 }
 

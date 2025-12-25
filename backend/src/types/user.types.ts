@@ -52,10 +52,13 @@ export interface CompanyMembership {
   joinedAt: number;
 }
 
-// Platform-level role (separate from team roles)
-export type UserRole = 'Super Admin' | null; // Super Admin is platform-level only, null means regular user
+// User role can be:
+// - Platform-level: 'Super Admin' (for platform admins)
+// - Team roles: 'admin' | 'creator' | 'member' (for team/company roles)
+// - null (for regular users without a team role)
+export type UserRole = 'Super Admin' | 'admin' | 'creator' | 'member' | null;
 
-// Team roles are handled via Creds sub-collection (see creds.types.ts)
+// Team roles are also handled via Creds sub-collection (see creds.types.ts)
 // Team roles: 'member' | 'creator' | 'admin' (3 roles only)
 
 export interface SignupRequest {

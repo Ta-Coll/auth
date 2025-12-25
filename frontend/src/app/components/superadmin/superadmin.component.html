@@ -40,7 +40,7 @@
             <td>{{ user.username || '-' }}</td>
             <td>
               <span [class]="getRoleBadgeClass(user.role)">
-                {{ user.role || 'Member' }}
+                {{ (user.role || 'member') | titlecase }}
               </span>
             </td>
             <td>
@@ -93,9 +93,9 @@
         <div class="form-group">
           <label for="role">Role:</label>
           <select id="role" [(ngModel)]="newRole" class="form-control">
-            <option value="Member">Member</option>
-            <option value="Creator">Creator</option>
-            <option value="Super Admin">Super Admin</option>
+            <option value="member">Member</option>
+            <option value="creator">Creator</option>
+            <option value="admin">Admin</option>
           </select>
         </div>
         <div class="form-group">
@@ -206,9 +206,9 @@
               [(ngModel)]="newUser.role" 
               class="form-control" 
               required>
-              <option value="Member">Member</option>
-              <option value="Creator">Creator</option>
-              <option value="Super Admin">Super Admin</option>
+              <option value="member">Member</option>
+              <option value="creator">Creator</option>
+              <option value="admin">Admin</option>
             </select>
           </div>
 

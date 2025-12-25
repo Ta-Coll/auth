@@ -16,8 +16,10 @@ export class CompanyInviteComponent implements OnInit {
   errorMessage: string = '';
   isInviting: boolean = false;
   isAddingUser: boolean = false;
+  isUpdatingMember: boolean = false;
   showInviteModal: boolean = false;
   showInsertModal: boolean = false;
+  showEditModal: boolean = false;
   
   inviteForm = {
     email: '',
@@ -29,6 +31,15 @@ export class CompanyInviteComponent implements OnInit {
     role: 'member' as 'member' | 'creator',
     firstName: '',
     lastName: ''
+  };
+
+  editForm = {
+    uid: '',
+    email: '',
+    firstName: '',
+    lastName: '',
+    role: 'member' as 'member' | 'creator' | 'admin',
+    isInvited: false // Track if this is an invited user (no uid)
   };
 
   constructor(
@@ -197,6 +208,87 @@ export class CompanyInviteComponent implements OnInit {
         return 'badge-member';
       default:
         return 'badge-secondary';
+    }
+  }
+
+  openEditModal(member: any): void {
+    const isInvited = !member.uid || member.status === 'invited';
+    this.editForm = {
+      uid: member.uid || '',
+      email: member.email || '',
+      firstName: member.firstName || '',
+      lastName: member.lastName || '',
+      role: member.role || 'member',
+      isInvited: isInvited
+    };
+    this.showEditModal = true;
+  }
+
+  closeEditModal(): void {
+    this.showEditModal = false;
+    this.editForm = {
+      uid: '',
+      email: '',
+      firstName: '',
+      lastName: '',
+      role: 'member',
+      isInvited: false
+    };
+  }
+
+  updateMemberRole(): void {
+    if (!this.editForm.role) {
+      alert('Role is required');
+      return;
+    }
+
+    this.isUpdatingMember = true;
+
+    // If it's an invited user (no uid), update invite role
+    if (this.editForm.isInvited) {
+      // For invited users, only member or creator roles are allowed
+      if (this.editForm.role === 'admin') {
+        alert('Admin role cannot be assigned via invite. Please use the Insert button to add an admin.');
+        this.isUpdatingMember = false;
+        return;
+      }
+
+      this.companyService.updateInviteRole(this.companyId, this.editForm.email, this.editForm.role as 'member' | 'creator').subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.closeEditModal();
+            this.loadCompanyMembers();
+            alert('Invite role updated successfully!');
+          }
+          this.isUpdatingMember = false;
+        },
+        error: (error) => {
+          alert(error.error?.error || 'Failed to update invite role');
+          this.isUpdatingMember = false;
+        }
+      });
+    } else {
+      // For accepted members (with uid), update member role
+      if (!this.editForm.uid) {
+        alert('Member UID is required');
+        this.isUpdatingMember = false;
+        return;
+      }
+
+      this.companyService.updateMemberRole(this.companyId, this.editForm.uid, this.editForm.role).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.closeEditModal();
+            this.loadCompanyMembers();
+            alert('Member role updated successfully!');
+          }
+          this.isUpdatingMember = false;
+        },
+        error: (error) => {
+          alert(error.error?.error || 'Failed to update member role');
+          this.isUpdatingMember = false;
+        }
+      });
     }
   }
 

@@ -93,6 +93,10 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
       status: 'accepted',
     });
 
+    // Update user's role in users collection to 'admin' when they create a company
+    // This updates the role to reflect their team admin status
+    await userModel.updateRole(user.uid, 'admin');
+
     // Get updated company with members
     const updatedCompany = await companyModel.findByCompanyId(company.companyId);
 
@@ -279,9 +283,28 @@ router.post('/invite', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Create invite with role - save to invites collection only
-    // Creds will be created when invite is accepted
+    // Create invite with role - save to invites collection
     const invite = await inviteModel.createInvite(companyId, email, req.user.uid, inviteRole as any);
+
+    // If user doesn't exist, create user in users collection with emailVerified: false
+    // User will verify email when they click the invite link
+    if (!existingUser) {
+      // Generate unique username from email
+      const baseUsername = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+      const uniqueUsername = `${baseUsername}_${Date.now().toString().slice(-6)}`;
+      
+      // Create user with default password "12345" and emailVerified: false
+      // User will set their password when they click the invite link
+      await userModel.createUser({
+        email: email.toLowerCase().trim(),
+        username: uniqueUsername,
+        password: '12345', // Default password - user should change via invite link
+        firstName: '', // Will be empty, user can update later
+        lastName: '', // Will be empty, user can update later
+        timeZone: 'America/New_York', // Default timezone
+      }, req.user.uid);
+      // Note: emailVerified remains false - user will verify via invite link
+    }
 
     res.status(201).json({
       success: true,
@@ -361,18 +384,18 @@ router.post('/invite/:inviteId/accept', async (req: Request, res: Response): Pro
       const baseUsername = invite.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
       const uniqueUsername = `${baseUsername}_${Date.now().toString().slice(-6)}`;
       
-      // Create user with default password "12345"
+      // User should have been created when invite was sent
+      // If not, create them now (fallback)
+      // Note: emailVerified should remain false until user verifies via invite link
       user = await userModel.createUser({
         email: invite.email.toLowerCase().trim(),
         username: uniqueUsername,
-        password: '12345', // Default password - user can change it later
+        password: '12345', // Default password - user should change via invite link
         firstName: '', // Will be empty, user can update later
         lastName: '', // Will be empty, user can update later
         timeZone: 'America/New_York', // Default timezone
       }, invite.invitedBy);
-
-      // Set email as verified since user was added by admin/invite
-      await userModel.updateEmailVerified(user.uid, true);
+      // emailVerified remains false - user should verify via invite link
     } else {
       // User exists - verify it's the same user accepting the invite (if logged in)
       if (req.user && user.uid !== req.user.uid) {
@@ -826,6 +849,48 @@ router.post('/:companyId/members/delete', async (req: Request, res: Response): P
       await inviteModel.deleteInvite(invite.inviteId);
     }
 
+    // Delete user from users collection if they were only invited (not a regular registered user)
+    // Check if user exists and if they were only created via invite (check if they have other companies)
+    if (uid) {
+      const userModel = getUserModel();
+      const user = await userModel.findByUid(uid);
+      
+      if (user) {
+        // Check if user has other company memberships
+        const otherCreds = await credsCollection.find({ 
+          uid, 
+          companyId: { $ne: companyId } 
+        }).toArray();
+        
+        // If user has no other company memberships and email is not verified,
+        // they were likely only invited, so delete from users collection
+        if (otherCreds.length === 0 && !user.emailVerified) {
+          const db = getDatabase();
+          const usersCollection = db.collection('users');
+          await usersCollection.deleteOne({ uid });
+        }
+      }
+    } else {
+      // For invited users without uid, find by email and delete if not verified
+      const userModel = getUserModel();
+      const user = await userModel.findByEmail(email);
+      
+      if (user && !user.emailVerified) {
+        // Check if user has other company memberships
+        const otherCreds = await credsCollection.find({ 
+          uid: user.uid, 
+          companyId: { $ne: companyId } 
+        }).toArray();
+        
+        // If no other memberships, delete from users collection
+        if (otherCreds.length === 0) {
+          const db = getDatabase();
+          const usersCollection = db.collection('users');
+          await usersCollection.deleteOne({ uid: user.uid });
+        }
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: 'Member deleted successfully',
@@ -837,6 +902,205 @@ router.post('/:companyId/members/delete', async (req: Request, res: Response): P
       success: false,
       error: 'Failed to delete member',
       code: 'DELETE_MEMBER_FAILED',
+    });
+  }
+});
+
+// Update member role in company (Admin only)
+router.patch('/:companyId/members/:uid/role', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED',
+      });
+      return;
+    }
+
+    const { companyId, uid } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      res.status(400).json({
+        success: false,
+        error: 'Role is required',
+        code: 'MISSING_ROLE',
+      });
+      return;
+    }
+
+    // Validate role - only team roles allowed
+    const validRoles: Array<'member' | 'creator' | 'admin'> = ['member', 'creator', 'admin'];
+    const normalizedRole = role.toLowerCase();
+    if (!validRoles.includes(normalizedRole as any)) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid role. Must be one of: ${validRoles.join(', ')}`,
+        code: 'INVALID_ROLE',
+      });
+      return;
+    }
+
+    const companyModel = getCompanyModel();
+    const { CredsModel } = await import('../models/Creds.model');
+
+    // Verify company exists
+    const company = await companyModel.findByCompanyId(companyId);
+    if (!company) {
+      res.status(404).json({
+        success: false,
+        error: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Check if user is Admin (team admin) of the company
+    const userMember = company.members?.find(m => m.uid === req.user.uid);
+    if (!userMember || userMember.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Only team Admins can update member roles',
+        code: 'INSUFFICIENT_PERMISSIONS',
+      });
+      return;
+    }
+
+    // Prevent admin from changing their own role (they must remain admin)
+    if (uid === req.user.uid && normalizedRole !== 'admin') {
+      res.status(400).json({
+        success: false,
+        error: 'You cannot change your own role from admin',
+        code: 'CANNOT_CHANGE_OWN_ROLE',
+      });
+      return;
+    }
+
+    // Check if member exists in company
+    const memberToUpdate = company.members?.find(m => m.uid === uid);
+    if (!memberToUpdate) {
+      res.status(404).json({
+        success: false,
+        error: 'Member not found in this company',
+        code: 'MEMBER_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Update role in company members array
+    await companyModel.updateMemberRole(companyId, uid, normalizedRole as CompanyRole);
+
+    // Update role in Creds collection
+    const credsCollection = CredsModel.getCredsCollection();
+    await credsCollection.updateOne(
+      { uid, companyId },
+      { $set: { role: normalizedRole } }
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Member role updated successfully',
+      data: { uid, role: normalizedRole },
+    });
+  } catch (error) {
+    console.error('Update member role error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update member role',
+      code: 'UPDATE_MEMBER_ROLE_FAILED',
+    });
+  }
+});
+
+// Update invite role (for pending invites - Admin only)
+router.patch('/:companyId/invites/:email/role', async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.user) {
+      res.status(401).json({
+        success: false,
+        error: 'Authentication required',
+        code: 'AUTH_REQUIRED',
+      });
+      return;
+    }
+
+    const { companyId, email } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      res.status(400).json({
+        success: false,
+        error: 'Role is required',
+        code: 'MISSING_ROLE',
+      });
+      return;
+    }
+
+    // Validate role - only member or creator can be assigned via invite (admin cannot be invited)
+    const validRoles: Array<'member' | 'creator'> = ['member', 'creator'];
+    const normalizedRole = role.toLowerCase();
+    if (!validRoles.includes(normalizedRole as any)) {
+      res.status(400).json({
+        success: false,
+        error: `Invalid role. Must be one of: ${validRoles.join(', ')}. Admin role cannot be assigned via invite.`,
+        code: 'INVALID_ROLE',
+      });
+      return;
+    }
+
+    const companyModel = getCompanyModel();
+    const inviteModel = getInviteModel();
+
+    // Verify company exists
+    const company = await companyModel.findByCompanyId(companyId);
+    if (!company) {
+      res.status(404).json({
+        success: false,
+        error: 'Company not found',
+        code: 'COMPANY_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Check if user is Admin (team admin) of the company
+    const userMember = company.members?.find(m => m.uid === req.user.uid);
+    if (!userMember || userMember.role !== 'admin') {
+      res.status(403).json({
+        success: false,
+        error: 'Only team Admins can update invite roles',
+        code: 'INSUFFICIENT_PERMISSIONS',
+      });
+      return;
+    }
+
+    // Check if invite exists
+    const invites = await inviteModel.findByCompanyId(companyId);
+    const invite = invites.find(inv => inv.email.toLowerCase() === email.toLowerCase() && inv.status === 'pending');
+    
+    if (!invite) {
+      res.status(404).json({
+        success: false,
+        error: 'Pending invite not found for this email',
+        code: 'INVITE_NOT_FOUND',
+      });
+      return;
+    }
+
+    // Update invite role
+    await inviteModel.updateInviteRole(companyId, email, normalizedRole as any);
+
+    res.status(200).json({
+      success: true,
+      message: 'Invite role updated successfully',
+      data: { email, role: normalizedRole },
+    });
+  } catch (error) {
+    console.error('Update invite role error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update invite role',
+      code: 'UPDATE_INVITE_ROLE_FAILED',
     });
   }
 });

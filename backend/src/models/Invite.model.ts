@@ -89,5 +89,13 @@ export class InviteModel {
     const result = await this.collection.deleteOne({ inviteId });
     return result.deletedCount > 0;
   }
+
+  async updateInviteRole(companyId: string, email: string, role: Invite['role']): Promise<boolean> {
+    const result = await this.collection.updateOne(
+      { companyId, email: email.toLowerCase().trim(), status: 'pending' },
+      { $set: { role } }
+    );
+    return result.modifiedCount > 0;
+  }
 }
 

@@ -30,14 +30,17 @@ router.post('/users', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Validate role
-    if (role && !['Member', 'Creator', 'Super Admin'].includes(role)) {
-      res.status(400).json({
-        success: false,
-        error: 'Invalid role. Must be: Member, Creator, or Super Admin',
-        code: 'INVALID_ROLE',
-      });
-      return;
+    // Validate role - accept team roles: admin, creator, member (case-insensitive)
+    if (role) {
+      const normalizedRole = role.toLowerCase();
+      if (!['admin', 'creator', 'member'].includes(normalizedRole)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid role. Must be: admin, creator, or member',
+          code: 'INVALID_ROLE',
+        });
+        return;
+      }
     }
 
     const userModel = getUserModel();
@@ -77,9 +80,19 @@ router.post('/users', async (req: Request, res: Response): Promise<void> => {
     const user = await userModel.createUser(signupData, req.user?.uid);
 
     // Update role and emailVerified if provided
+    // Validate and normalize role to lowercase team roles
     const updates: any = {};
     if (role) {
-      updates.role = role;
+      const normalizedRole = role.toLowerCase();
+      if (!['admin', 'creator', 'member'].includes(normalizedRole)) {
+        res.status(400).json({
+          success: false,
+          error: 'Invalid role. Must be: admin, creator, or member',
+          code: 'INVALID_ROLE',
+        });
+        return;
+      }
+      updates.role = normalizedRole;
     }
     if (emailVerified !== undefined) {
       updates.emailVerified = Boolean(emailVerified);
@@ -189,38 +202,41 @@ router.patch('/users/:uid', async (req: Request, res: Response): Promise<void> =
     const updates: any = {};
 
     // Update role if provided
+    // Accept team roles: admin, creator, member (lowercase)
     if (role !== undefined) {
-      if (!['Member', 'Creator', 'Super Admin'].includes(role)) {
+      // Normalize role to lowercase for validation
+      const normalizedRole = role.toLowerCase();
+      if (!['admin', 'creator', 'member'].includes(normalizedRole)) {
         res.status(400).json({
           success: false,
-          error: 'Invalid role. Must be: Member, Creator, or Super Admin',
+          error: 'Invalid role. Must be: admin, creator, or member',
           code: 'INVALID_ROLE',
         });
         return;
       }
 
       // Prevent removing Super Admin role from the last Super Admin
-      if (role !== 'Super Admin') {
-        const user = await userModel.findByUid(uid);
-        if (user?.role === 'Super Admin') {
-          const db = getDatabase();
-          const usersCollection = db.collection<User>('users');
-          const superAdminCount = await usersCollection.countDocuments({ 
-            role: 'Super Admin',
-            removed: false 
+      const user = await userModel.findByUid(uid);
+      if (user?.role === 'Super Admin') {
+        const db = getDatabase();
+        const usersCollection = db.collection<User>('users');
+        const superAdminCount = await usersCollection.countDocuments({ 
+          role: 'Super Admin',
+          removed: false 
+        });
+        
+        if (superAdminCount <= 1) {
+          res.status(400).json({
+            success: false,
+            error: 'Cannot change role of the last Super Admin',
+            code: 'LAST_SUPERADMIN',
           });
-          
-          if (superAdminCount <= 1) {
-            res.status(400).json({
-              success: false,
-              error: 'Cannot remove Super Admin role from the last Super Admin',
-              code: 'LAST_SUPERADMIN',
-            });
-            return;
-          }
+          return;
         }
       }
-      updates.role = role;
+      
+      // Store role as lowercase team role
+      updates.role = normalizedRole;
     }
 
     // Update email verified if provided

@@ -98,7 +98,15 @@ export class SuperadminComponent implements OnInit {
 
   openRoleModal(user: User): void {
     this.selectedUser = user;
-    this.newRole = user.role || 'Member';
+    // Default to 'member' if role is null or 'Super Admin'
+    const userRole = user.role;
+    if (!userRole || userRole === 'Super Admin' || userRole === 'superadmin') {
+      this.newRole = 'member';
+    } else {
+      // Map old role names to new team roles if needed
+      this.newRole = userRole.toLowerCase() === 'creator' ? 'creator' : 
+                     userRole.toLowerCase() === 'admin' ? 'admin' : 'member';
+    }
     this.newEmailVerified = user.emailVerified || false;
     this.showRoleModal = true;
   }
@@ -133,12 +141,18 @@ export class SuperadminComponent implements OnInit {
   }
 
   getRoleBadgeClass(role: string | undefined): string {
-    switch (role) {
-      case 'Super Admin':
+    if (!role) return 'badge-default';
+    
+    const normalizedRole = role.toLowerCase();
+    switch (normalizedRole) {
+      case 'super admin':
+      case 'superadmin':
         return 'badge-superadmin';
-      case 'Creator':
+      case 'creator':
         return 'badge-creator';
-      case 'Member':
+      case 'admin':
+        return 'badge-admin';
+      case 'member':
         return 'badge-member';
       default:
         return 'badge-default';
@@ -153,7 +167,7 @@ export class SuperadminComponent implements OnInit {
       firstName: '',
       lastName: '',
       timeZone: 'America/New_York',
-      role: 'Member',
+      role: 'member',
       emailVerified: false
     };
     this.showInsertModal = true;
@@ -169,7 +183,7 @@ export class SuperadminComponent implements OnInit {
       firstName: '',
       lastName: '',
       timeZone: 'America/New_York',
-      role: 'Member',
+      role: 'member',
       emailVerified: false
     };
   }
