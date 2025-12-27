@@ -1,0 +1,47 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <h1>Email Validation</h1>
+    <p class="subtitle">A validation email has been sent to <strong>{{ email }}</strong></p>
+    <p class="subtitle">Please enter code from email:</p>
+
+    <div *ngIf="errorMessage" class="error-message">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="successMessage" class="success-message">
+      {{ successMessage }}
+    </div>
+
+    <form [formGroup]="verifyForm" (ngSubmit)="onSubmit()" *ngIf="!successMessage">
+      <div class="form-group">
+        <label for="code">Verification Code</label>
+        <input 
+          type="text" 
+          id="code" 
+          formControlName="code"
+          maxlength="4"
+          placeholder="0000"
+          [class.error]="verifyForm.get('code')?.invalid && verifyForm.get('code')?.touched"
+          (input)="onCodeInput($event)">
+        <small *ngIf="verifyForm.get('code')?.invalid && verifyForm.get('code')?.touched" class="error-text">
+          {{ getErrorMessage() }}
+        </small>
+      </div>
+
+      <button type="submit" [disabled]="verifyForm.invalid || isLoading" class="submit-btn">
+        <span *ngIf="!isLoading">Verify Code</span>
+        <span *ngIf="isLoading">Verifying...</span>
+      </button>
+    </form>
+
+    <div class="action-buttons" *ngIf="!successMessage">
+      <button type="button" class="btn-secondary" (click)="resendEmail()" [disabled]="isLoading">
+        Send email again
+      </button>
+      <button type="button" class="btn-secondary" (click)="goToSignup()" [disabled]="isLoading">
+        Start Over
+      </button>
+    </div>
+  </div>
+</div>
+

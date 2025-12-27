@@ -7,6 +7,14 @@
       {{ errorMessage }}
     </div>
 
+    <div *ngIf="showResendVerification" class="resend-verification-box">
+      <p>Your email is not verified. Click below to resend the verification code.</p>
+      <button type="button" class="btn-resend" (click)="onResendVerification()" [disabled]="isLoading">
+        <span *ngIf="!isLoading">Resend Verification Code</span>
+        <span *ngIf="isLoading">Sending...</span>
+      </button>
+    </div>
+
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
       <div class="form-group">
         <label for="email">Email</label>
@@ -37,6 +45,10 @@
         <span *ngIf="isLoading">Signing In...</span>
       </button>
     </form>
+
+    <p class="forgot-password">
+      <a routerLink="/forgot-password">Forgot Password?</a>
+    </p>
 
     <p class="switch-auth">
       Don't have an account? <a routerLink="/signup">Sign Up</a>

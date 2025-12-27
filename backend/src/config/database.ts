@@ -27,6 +27,8 @@ export async function connectDatabase(): Promise<Db> {
     await ensureCompaniesCollection();
     await ensureInvitesCollection();
     await ensureCredsCollection();
+    await ensureActionsCollection();
+    await ensureVerificationCodesCollection();
     
     return db;
   } catch (error) {
@@ -132,6 +134,45 @@ export async function closeDatabase(): Promise<void> {
     client = null;
     db = null;
     console.log('MongoDB connection closed');
+  }
+}
+
+async function ensureActionsCollection(): Promise<void> {
+  if (!db) return;
+
+  try {
+    const actionsCollection = db.collection('actions');
+    
+    // Create indexes for better query performance
+    await actionsCollection.createIndex({ created: -1 });
+    await actionsCollection.createIndex({ uid: 1 });
+    await actionsCollection.createIndex({ companyId: 1 });
+    // Compound index for billing queries (companyId + created date range)
+    await actionsCollection.createIndex({ companyId: 1, created: -1 });
+    await actionsCollection.createIndex({ removed: 1 });
+    
+    console.log('✅ Actions collection indexes created');
+  } catch (error) {
+    console.error('Error creating actions indexes:', error);
+  }
+}
+
+async function ensureVerificationCodesCollection(): Promise<void> {
+  if (!db) return;
+
+  try {
+    const verificationCodesCollection = db.collection('verificationCodes');
+    
+    // Create indexes
+    await verificationCodesCollection.createIndex({ email: 1 });
+    await verificationCodesCollection.createIndex({ code: 1 });
+    await verificationCodesCollection.createIndex({ email: 1, code: 1 });
+    await verificationCodesCollection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
+    await verificationCodesCollection.createIndex({ verified: 1 });
+    
+    console.log('✅ VerificationCodes collection indexes created');
+  } catch (error) {
+    console.error('Error creating verificationCodes indexes:', error);
   }
 }
 

@@ -21,8 +21,9 @@
     "cors": "^2.8.5",
     "helmet": "^7.1.0",
     "express-validator": "^7.0.1",
-    "uuid": "^9.0.image.png1",
-    "@vendia/serverless-express": "^4.12.6"
+    "uuid": "^9.0.1",
+    "@vendia/serverless-express": "^4.12.6",
+    "axios": "^1.6.2"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

@@ -11,9 +11,14 @@ import { SuperadminComponent } from './components/superadmin/superadmin.componen
 import { UnverifiedComponent } from './components/unverified/unverified.component';
 import { CompanyAdminComponent } from './components/company-admin/company-admin.component';
 import { CompanyInviteComponent } from './components/company-invite/company-invite.component';
+import { LogsComponent } from './components/logs/logs.component';
+import { VerifyCodeComponent } from './components/verify-code/verify-code.component';
+import { ForgotPasswordComponent } from './components/forgot-password/forgot-password.component';
+import { ResetPasswordComponent } from './components/reset-password/reset-password.component';
 import { AuthService } from './services/auth.service';
 import { AdminService } from './services/admin.service';
 import { CompanyService } from './services/company.service';
+import { ActionTrackerService } from './services/action-tracker.service';
 import { AuthGuard } from './guards/auth.guard';
 import { SuperAdminGuard } from './guards/superadmin.guard';
 import { GuestGuard } from './guards/guest.guard';
@@ -27,7 +32,11 @@ import { GuestGuard } from './guards/guest.guard';
     SuperadminComponent,
     UnverifiedComponent,
     CompanyAdminComponent,
-    CompanyInviteComponent
+    CompanyInviteComponent,
+    LogsComponent,
+    VerifyCodeComponent,
+    ForgotPasswordComponent,
+    ResetPasswordComponent
   ],
   imports: [
     BrowserModule,
@@ -36,7 +45,7 @@ import { GuestGuard } from './guards/guest.guard';
     ReactiveFormsModule,
     HttpClientModule
   ],
-  providers: [AuthService, AdminService, CompanyService, AuthGuard, SuperAdminGuard, GuestGuard],
+  providers: [AuthService, AdminService, CompanyService, ActionTrackerService, AuthGuard, SuperAdminGuard, GuestGuard],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

@@ -6,19 +6,6 @@ export const validateSignup = [
     .isEmail()
     .withMessage('Valid email is required')
     .normalizeEmail(),
-  body('username')
-    .trim()
-    .notEmpty()
-    .withMessage('Username is required')
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Username must be between 3 and 30 characters')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores'),
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
   body('firstName')
     .trim()
     .notEmpty()
@@ -35,6 +22,34 @@ export const validateSignup = [
     .trim()
     .notEmpty()
     .withMessage('Time zone is required'),
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ 
+        success: false,
+        error: 'Validation failed', 
+        code: 'VALIDATION_ERROR',
+        details: errors.array()
+      });
+      return;
+    }
+    next();
+  },
+];
+
+export const validateVerifyCode = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail(),
+  body('code')
+    .trim()
+    .notEmpty()
+    .withMessage('Verification code is required')
+    .isLength({ min: 4, max: 4 })
+    .withMessage('Verification code must be 4 digits')
+    .matches(/^\d{4}$/)
+    .withMessage('Verification code must be 4 digits'),
   (req: Request, res: Response, next: NextFunction): void => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -93,3 +108,55 @@ export const validateEmail = [
   },
 ];
 
+export const validatePasswordReset = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail(),
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ 
+        success: false,
+        error: 'Validation failed', 
+        code: 'VALIDATION_ERROR',
+        details: errors.array()
+      });
+      return;
+    }
+    next();
+  },
+];
+
+export const validatePasswordResetVerify = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail(),
+  body('code')
+    .trim()
+    .notEmpty()
+    .withMessage('Reset code is required')
+    .isLength({ min: 4, max: 4 })
+    .withMessage('Reset code must be 4 digits')
+    .matches(/^\d{4}$/)
+    .withMessage('Reset code must be 4 digits'),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain at least one uppercase letter, one lowercase letter, and one number'),
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ 
+        success: false,
+        error: 'Validation failed', 
+        code: 'VALIDATION_ERROR',
+        details: errors.array()
+      });
+      return;
+    }
+    next();
+  },
+];

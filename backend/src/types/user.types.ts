@@ -63,11 +63,10 @@ export type UserRole = 'Super Admin' | 'admin' | 'creator' | 'member' | null;
 
 export interface SignupRequest {
   email: string;
-  username: string;
-  password: string;
   firstName: string;
   lastName: string;
   timeZone: string;
+  // Password is auto-generated, username is optional
 }
 
 export interface LoginRequest {

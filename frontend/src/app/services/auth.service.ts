@@ -25,11 +25,36 @@ export interface AuthResponse {
 
 export interface SignupData {
   email: string;
-  username: string;
-  password: string;
   firstName: string;
   lastName: string;
   timeZone: string;
+}
+
+export interface VerifyCodeData {
+  email: string;
+  code: string;
+}
+
+export interface SignupResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    email: string;
+    emailVerified: boolean;
+  };
+  error?: string;
+  code?: string;
+}
+
+export interface VerifyCodeResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    email: string;
+    emailVerified: boolean;
+  };
+  error?: string;
+  code?: string;
 }
 
 export interface LoginData {
@@ -48,14 +73,24 @@ export class AuthService {
     this.loadUserFromStorage();
   }
 
-  signup(data: SignupData): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${this.apiUrl}/signup`, data).pipe(
-      tap(response => {
-        if (response.success) {
-          this.setAuthData(response.data.token, response.data.user);
-        }
-      })
-    );
+  signup(data: SignupData): Observable<SignupResponse> {
+    return this.http.post<SignupResponse>(`${this.apiUrl}/signup`, data);
+  }
+
+  verifyCode(data: VerifyCodeData): Observable<VerifyCodeResponse> {
+    return this.http.post<VerifyCodeResponse>(`${this.apiUrl}/verify-code`, data);
+  }
+
+  resendVerificationCode(email: string): Observable<SignupResponse> {
+    return this.http.post<SignupResponse>(`${this.apiUrl}/resend-verification`, { email });
+  }
+
+  forgotPassword(email: string): Observable<SignupResponse> {
+    return this.http.post<SignupResponse>(`${this.apiUrl}/forgot-password`, { email });
+  }
+
+  resetPassword(email: string, code: string, newPassword: string): Observable<SignupResponse> {
+    return this.http.post<SignupResponse>(`${this.apiUrl}/reset-password`, { email, code, newPassword });
   }
 
   login(data: LoginData): Observable<AuthResponse> {

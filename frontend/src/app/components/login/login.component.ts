@@ -13,6 +13,8 @@ export class LoginComponent {
   loginForm: FormGroup;
   errorMessage: string = '';
   isLoading: boolean = false;
+  showResendVerification: boolean = false;
+  resendEmail: string = '';
 
   constructor(
     private fb: FormBuilder,
@@ -52,7 +54,18 @@ export class LoginComponent {
           }
         },
         error: (error) => {
-          this.errorMessage = error.error?.error || 'Login failed. Please check your credentials.';
+          const errorCode = error.error?.code;
+          const errorMsg = error.error?.error || 'Login failed. Please check your credentials.';
+          
+          // Check if user is unverified
+          if (errorCode === 'EMAIL_NOT_VERIFIED') {
+            this.errorMessage = errorMsg;
+            this.showResendVerification = true;
+            this.resendEmail = this.loginForm.get('email')?.value || '';
+          } else {
+            this.errorMessage = errorMsg;
+            this.showResendVerification = false;
+          }
           this.isLoading = false;
         }
       });
@@ -86,6 +99,30 @@ export class LoginComponent {
       error: () => {
         // On error, go to general dashboard
         this.router.navigate(['/dashboard'], { replaceUrl: true });
+        this.isLoading = false;
+      }
+    });
+  }
+
+  onResendVerification(): void {
+    if (!this.resendEmail) return;
+    
+    this.isLoading = true;
+    this.errorMessage = '';
+    
+    this.authService.resendVerificationCode(this.resendEmail).subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Redirect to verify code page
+          this.router.navigate(['/verify-code'], { 
+            replaceUrl: true,
+            queryParams: { email: this.resendEmail }
+          });
+        }
+        this.isLoading = false;
+      },
+      error: (error) => {
+        this.errorMessage = error.error?.error || 'Failed to resend verification code. Please try again.';
         this.isLoading = false;
       }
     });

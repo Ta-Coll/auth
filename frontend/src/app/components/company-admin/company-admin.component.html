@@ -62,13 +62,13 @@
             <div class="tool-card" *ngIf="canInvite">
               <h3>Invite Users</h3>
               <p>Invite team members by email</p>
-              <button (click)="openInviteModal()" class="tool-btn">Invite</button>
+              <button (click)="openInvitePage()" class="tool-btn">Invite</button>
             </div>
             
             <div class="tool-card" *ngIf="canViewEventLogs">
               <h3>Event Log Viewer</h3>
               <p>View system events and activity logs</p>
-              <button class="tool-btn" disabled>View Logs</button>
+              <button (click)="openLogsPage()" class="tool-btn">View Logs</button>
             </div>
             
             <div class="tool-card" *ngIf="canAccessAdminTools">

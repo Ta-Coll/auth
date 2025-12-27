@@ -47,41 +47,22 @@
       </div>
 
       <div class="form-group">
-        <label for="username">Username</label>
-        <input 
-          type="text" 
-          id="username" 
-          formControlName="username"
-          [class.error]="signupForm.get('username')?.invalid && signupForm.get('username')?.touched">
-        <small *ngIf="signupForm.get('username')?.invalid && signupForm.get('username')?.touched" class="error-text">
-          {{ getErrorMessage('username') }}
-        </small>
-      </div>
-
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input 
-          type="password" 
-          id="password" 
-          formControlName="password"
-          [class.error]="signupForm.get('password')?.invalid && signupForm.get('password')?.touched">
-        <small *ngIf="signupForm.get('password')?.invalid && signupForm.get('password')?.touched" class="error-text">
-          {{ getErrorMessage('password') }}
-        </small>
-        <small class="hint">Must be at least 8 characters with uppercase, lowercase, and number</small>
-      </div>
-
-      <div class="form-group">
         <label for="timeZone">Time Zone</label>
-        <input 
-          type="text" 
+        <select 
           id="timeZone" 
           formControlName="timeZone"
           [class.error]="signupForm.get('timeZone')?.invalid && signupForm.get('timeZone')?.touched">
+          <option value="America/New_York">America/New_York</option>
+          <option value="America/Chicago">America/Chicago</option>
+          <option value="America/Denver">America/Denver</option>
+          <option value="America/Los_Angeles">America/Los_Angeles</option>
+          <option value="UTC">UTC</option>
+        </select>
         <small *ngIf="signupForm.get('timeZone')?.invalid && signupForm.get('timeZone')?.touched" class="error-text">
           {{ getErrorMessage('timeZone') }}
         </small>
       </div>
+
 
       <button type="submit" [disabled]="signupForm.invalid || isLoading" class="submit-btn">
         <span *ngIf="!isLoading">Sign Up</span>

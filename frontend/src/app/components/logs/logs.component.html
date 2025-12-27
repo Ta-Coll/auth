@@ -1,0 +1,242 @@
+<div class="logs-container">
+  <div class="logs-card">
+    <div class="header">
+      <div class="header-left">
+        <h1>Event Log Viewer</h1>
+        <p class="subtitle" *ngIf="companyId">Viewing logs for company: {{ companyId }}</p>
+      </div>
+      <div class="header-actions">
+        <button (click)="goBack()" class="btn-secondary">Back</button>
+        <button (click)="logout()" class="logout-btn">Logout</button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="filters-section">
+      <div class="filters-grid">
+        <div class="form-group">
+          <label>Type</label>
+          <select [(ngModel)]="filters.type" (change)="loadLogs()">
+            <option value="">All Types</option>
+            <option value="click">Click</option>
+            <option value="edit">Edit</option>
+            <option value="delete">Delete</option>
+            <option value="update">Update</option>
+            <option value="create">Create</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Collection</label>
+          <input type="text" [(ngModel)]="filters.collection" (input)="loadLogs()" placeholder="Filter by collection">
+        </div>
+        
+        <div class="form-group">
+          <label>UID</label>
+          <input type="text" [(ngModel)]="filters.uid" (input)="loadLogs()" placeholder="Filter by UID">
+        </div>
+        
+        <div class="form-group">
+          <label>Company ID</label>
+          <input type="text" [(ngModel)]="filters.companyId" (input)="loadLogs()" placeholder="Filter by Company ID">
+        </div>
+        
+        <div class="form-group">
+          <label>Status</label>
+          <select [(ngModel)]="filters.removed" (change)="loadLogs()">
+            <option [value]="undefined">All</option>
+            <option [value]="false">Active</option>
+            <option [value]="true">Removed</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-actions">
+        <button class="btn-primary" (click)="loadLogs()">Refresh</button>
+        <button class="btn-secondary" (click)="clearFilters()">Clear Filters</button>
+        <button class="btn-danger" (click)="clearAllLogs()">Clear All Logs</button>
+      </div>
+    </div>
+
+    <!-- Billing Summary Section -->
+    <div class="billing-section">
+      <h3>Billing Summary</h3>
+      <p class="section-description">
+        Get total count sum for billing purposes by date range and company
+      </p>
+      
+      <div class="billing-filters">
+        <div class="form-group">
+          <label>Company ID</label>
+          <input type="text" [(ngModel)]="billingFilters.companyId" placeholder="Enter company ID" />
+        </div>
+        <div class="form-group">
+          <label>From Date</label>
+          <input type="date" [(ngModel)]="billingFilters.fromDate" />
+        </div>
+        <div class="form-group">
+          <label>To Date</label>
+          <input type="date" [(ngModel)]="billingFilters.toDate" />
+        </div>
+      </div>
+      
+      <button class="btn-primary" (click)="getBillingSummary()" [disabled]="billingLoading || !billingFilters.companyId || !billingFilters.fromDate || !billingFilters.toDate">
+        {{ billingLoading ? 'Loading...' : 'Get Billing Summary' }}
+      </button>
+
+      <!-- Billing Results -->
+      <div *ngIf="billingSummary" class="billing-results">
+        <h4>Billing Results</h4>
+        <div class="billing-grid">
+          <div>
+            <strong>Company ID:</strong>
+            <p>{{ billingSummary.companyId }}</p>
+          </div>
+          <div>
+            <strong>Total Count (Sum):</strong>
+            <p class="billing-total">{{ billingSummary.totalSum | number }}</p>
+          </div>
+          <div>
+            <strong>Action Count:</strong>
+            <p>{{ billingSummary.documentCount | number }}</p>
+          </div>
+          <div>
+            <strong>Period:</strong>
+            <p>{{ formatDate(billingSummary.period.fromDate) }} to {{ formatDate(billingSummary.period.toDate) }}</p>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="billingError" class="error-message">
+        <strong>Error:</strong> {{ billingError }}
+      </div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div *ngIf="loading" class="loading">
+      <p>Loading logs...</p>
+    </div>
+
+    <!-- Logs table -->
+    <div *ngIf="!loading && actions.length > 0" class="logs-table-section">
+      <table class="logs-table">
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Collection</th>
+            <th>UID</th>
+            <th>Company ID</th>
+            <th>Host</th>
+            <th>Document ID</th>
+            <th>Count</th>
+            <th>Created</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let action of actions">
+            <td><span class="badge badge-info">{{ action.type || '-' }}</span></td>
+            <td>{{ action.collection || '-' }}</td>
+            <td>{{ action.uid || '-' }}</td>
+            <td>{{ action.companyId || '-' }}</td>
+            <td>{{ action.host || '-' }}</td>
+            <td>{{ action.id || '-' }}</td>
+            <td>{{ action.count }}</td>
+            <td>{{ action.created ? formatDate(action.created) : '-' }}</td>
+            <td>
+              <span [class]="action.removed ? 'badge badge-danger' : 'badge badge-success'">
+                {{ action.removed ? 'Removed' : 'Active' }}
+              </span>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button class="btn-edit" (click)="startEdit(action)">Edit</button>
+                <button *ngIf="!action.removed" class="btn-delete" (click)="deleteAction(action)">Delete</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination -->
+      <div class="pagination">
+        <div class="pagination-info">
+          <p>Page {{ pagination.page }} of {{ pagination.pages }} (Total: {{ pagination.total }})</p>
+        </div>
+        <div class="pagination-buttons">
+          <button class="btn-secondary" (click)="previousPage()" [disabled]="pagination.page <= 1">
+            Previous
+          </button>
+          <button class="btn-secondary" (click)="nextPage()" [disabled]="pagination.page >= pagination.pages">
+            Next
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- No logs message -->
+    <div *ngIf="!loading && actions.length === 0" class="no-logs">
+      <p>No logs found.</p>
+    </div>
+
+    <!-- Edit panel -->
+    <div *ngIf="editForm._id" class="edit-panel">
+      <h3>Edit Action</h3>
+      <div class="edit-form-grid">
+        <div class="form-group">
+          <label>Type</label>
+          <select [(ngModel)]="editForm.type">
+            <option value="">Select type</option>
+            <option value="click">click</option>
+            <option value="edit">edit</option>
+            <option value="delete">delete</option>
+            <option value="update">update</option>
+            <option value="create">create</option>
+            <option value="custom">custom</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Collection</label>
+          <input type="text" [(ngModel)]="editForm.collection" />
+        </div>
+        <div class="form-group">
+          <label>UID</label>
+          <input type="text" [(ngModel)]="editForm.uid" />
+        </div>
+        <div class="form-group">
+          <label>Company ID</label>
+          <input type="text" [(ngModel)]="editForm.companyId" />
+        </div>
+        <div class="form-group">
+          <label>Document ID</label>
+          <input type="text" [(ngModel)]="editForm.id" />
+        </div>
+        <div class="form-group">
+          <label>Count</label>
+          <input type="number" [(ngModel)]="editForm.count" />
+        </div>
+        <div class="form-group">
+          <label>Host</label>
+          <input type="text" [(ngModel)]="editForm.host" />
+        </div>
+        <div class="form-group">
+          <label>Created (timestamp ms)</label>
+          <input type="number" [(ngModel)]="editForm.created" />
+        </div>
+        <div class="form-group">
+          <label>Removed</label>
+          <select [(ngModel)]="editForm.removed">
+            <option [ngValue]="false">false</option>
+            <option [ngValue]="true">true</option>
+          </select>
+        </div>
+      </div>
+      <div class="edit-actions">
+        <button class="btn-success" (click)="saveEdit()">Update Action</button>
+        <button class="btn-secondary" (click)="cancelEdit()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+

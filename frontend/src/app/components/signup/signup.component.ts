@@ -20,8 +20,6 @@ export class SignupComponent {
   ) {
     this.signupForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(30), Validators.pattern(/^[a-zA-Z0-9_]+$/)]],
-      password: ['', [Validators.required, Validators.minLength(8), Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/)]],
       firstName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(100)]],
       lastName: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(100)]],
       timeZone: ['America/New_York', [Validators.required]]
@@ -37,16 +35,11 @@ export class SignupComponent {
       this.authService.signup(formData).subscribe({
         next: (response) => {
           if (response.success) {
-            // Redirect based on role and email verification
-            // Use replaceUrl to prevent back button from going to signup
-            // New users are not verified, so redirect to unverified page
-            if (response.data.user.role === 'Super Admin') {
-              this.router.navigate(['/admin'], { replaceUrl: true });
-            } else if (!response.data.user.emailVerified) {
-              this.router.navigate(['/unverified'], { replaceUrl: true });
-            } else {
-              this.router.navigate(['/dashboard'], { replaceUrl: true });
-            }
+            // Redirect to verify code page with email
+            this.router.navigate(['/verify-code'], { 
+              replaceUrl: true,
+              queryParams: { email: formData.email }
+            });
           }
           this.isLoading = false;
         },
@@ -71,14 +64,6 @@ export class SignupComponent {
     }
     if (field?.hasError('maxlength')) {
       return `${fieldName} is too long`;
-    }
-    if (field?.hasError('pattern')) {
-      if (fieldName === 'username') {
-        return 'Username can only contain letters, numbers, and underscores';
-      }
-      if (fieldName === 'password') {
-        return 'Password must contain uppercase, lowercase, and number';
-      }
     }
     return '';
   }

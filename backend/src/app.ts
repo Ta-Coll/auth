@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.routes';
 import adminRoutes from './routes/admin.routes';
 import teamRoutes from './routes/team.routes';
 import companyRoutes from './routes/company.routes';
+import actionsRoutes from './routes/actions.routes';
 
 const app: Express = express();
 
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/companies', companyRoutes);
+app.use('/api/actions', actionsRoutes);
 
 // 404 handler
 app.use((_req: Request, res: Response) => {

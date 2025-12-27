@@ -131,9 +131,14 @@ export class CompanyAdminComponent implements OnInit {
     this.activeTab = tab;
   }
 
-  openInviteModal(): void {
+  openInvitePage(): void {
     // Navigate to invite page
     this.router.navigate(['/company', this.companyId, 'invite'], { replaceUrl: true });
+  }
+
+  openLogsPage(): void {
+    // Navigate to logs page for this company
+    this.router.navigate(['/company', this.companyId, 'logs'], { replaceUrl: true });
   }
 
   logout(): void {

@@ -11,17 +11,19 @@ export class UserModel {
     this.collection = getDatabase().collection<User>('users');
   }
 
-  async createUser(data: SignupRequest, createdBy?: string): Promise<User> {
+  async createUser(data: SignupRequest & { password: string; username?: string }, createdBy?: string): Promise<User> {
     // Check if email already exists
     const existingEmail = await this.collection.findOne({ email: data.email.toLowerCase().trim() });
     if (existingEmail) {
       throw new Error('Email already in use');
     }
 
-    // Check if username already exists
-    const existingUsername = await this.collection.findOne({ username: data.username.toLowerCase().trim() });
-    if (existingUsername) {
-      throw new Error('Username already in use');
+    // Check if username already exists (if provided)
+    if (data.username) {
+      const existingUsername = await this.collection.findOne({ username: data.username.toLowerCase().trim() });
+      if (existingUsername) {
+        throw new Error('Username already in use');
+      }
     }
 
     // Hash password
@@ -46,7 +48,7 @@ export class UserModel {
       firstName: data.firstName,
       lastName: data.lastName,
       timeZone: data.timeZone,
-      username: data.username.toLowerCase().trim(),
+      username: data.username ? data.username.toLowerCase().trim() : undefined,
       role: defaultRole, // null for regular users, 'Super Admin' for platform admins
     };
     
@@ -59,6 +61,53 @@ export class UserModel {
     console.log('✅ User created with role:', user.role || 'null (regular user)');
 
     return user;
+  }
+
+  async createUserWithPassword(data: SignupRequest, hashedPassword: string, createdBy?: string): Promise<User> {
+    // Check if email already exists
+    const existingEmail = await this.collection.findOne({ email: data.email.toLowerCase().trim() });
+    if (existingEmail) {
+      throw new Error('Email already in use');
+    }
+
+    // Create user document
+    const now = Date.now();
+    const uid = uuidv4();
+
+    // New users have no platform role (null) - they're regular users
+    const defaultRole: UserRole = null;
+
+    const user: User = {
+      uid,
+      removed: false,
+      pw: hashedPassword,
+      created: now,
+      createdBy: createdBy || uid,
+      email: data.email.toLowerCase().trim(),
+      emailVerified: false,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      timeZone: data.timeZone,
+      role: defaultRole,
+    };
+    
+    const result = await this.collection.insertOne(user);
+    
+    if (!result.insertedId) {
+      throw new Error('Failed to create user');
+    }
+    
+    console.log('✅ User created with role:', user.role || 'null (regular user)');
+
+    return user;
+  }
+
+  async updatePassword(uid: string, hashedPassword: string): Promise<boolean> {
+    const result = await this.collection.updateOne(
+      { uid },
+      { $set: { pw: hashedPassword } }
+    );
+    return result.modifiedCount > 0;
   }
 
   async findByEmail(email: string): Promise<User | null> {
